@@ -5,7 +5,12 @@ use dynoser\walkdir\WalkDir;
 
 class HashSigCreater extends HashSigBase {
     
+    public static $dontConvertEOLextArr = ',exe,jpg,jpeg,png,gif,ico,bin';
+    
     public function __construct($ownSignerObj = null) {
+        if (\is_string(self::$dontConvertEOLextArr)) {
+            self::$dontConvertEOLextArr = \array_flip(\explode(',', self::$dontConvertEOLextArr));
+        }
         $this->setOwnSignerObj($ownSignerObj);
     }
     
@@ -98,11 +103,19 @@ class HashSigCreater extends HashSigBase {
                 continue;
             }
 
-            $content = \file_get_contents($fullName);
-            if (!\is_string($content)) {
+            $fileData = \file_get_contents($fullName);
+            if (!\is_string($fileData)) {
                 continue;
             }
-            $hashHex = \hash($hashAlgName, $content);
+
+            $i = \strrpos($fullName, '.');            
+            if (false !== \strpos($fileData, "\r") && false !== $i) {
+                $ext = \strtolower(\substr($fullName, $i + 1));
+                if (empty(self::$dontConvertEOLextArr[$ext])) {
+                    $fileData = \strtr($fileData, ["\r" => '']);
+                }
+            }
+            $hashHex = \hash($hashAlgName, $fileData);
 
             if ($hashHex) {
                 $shortPathName = \substr($fullName, $l + 1);
@@ -245,11 +258,23 @@ class HashSigCreater extends HashSigBase {
                 $changedFilesArr[$fileFull] = false;
                 continue;
             }
-            $newHashHex = \hash($hashAlgName, $content);
-            if (\is_array($hashLenStr)) {
-                $isEqual = $hashLenStr[1] === $newHashHex;
-            } else {
-                $isEqual = (false !== \strpos($hashLenStr, $newHashHex));
+            foreach([\hash($hashAlgName, $content), ''] as $newHashHex) {
+                if (!$newHashHex) {
+                    if (false === \strpos($content, "\r")) {
+                        break;
+                    }
+                    // try set EOL to canonical and check again
+                    $content = \strtr($content, ["\r" => '']);
+                    $newHashHex = \hash($hashAlgName, $content);
+                }
+                if (\is_array($hashLenStr)) {
+                    $isEqual = $hashLenStr[1] === $newHashHex;
+                } else {
+                    $isEqual = (false !== \strpos($hashLenStr, $newHashHex));
+                }
+                if ($isEqual) {
+                    break;
+                }
             }
             if (!$isEqual) {
                 $shortName = \substr($fileFull, $lpl);
