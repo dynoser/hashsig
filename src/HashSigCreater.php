@@ -8,6 +8,35 @@ class HashSigCreater extends HashSigBase {
     public function __construct($ownSignerObj = null) {
         $this->setOwnSignerObj($ownSignerObj);
     }
+    
+    public function makeIndexHashSignedFile(
+        array $extArr = ['*'],
+        array $excludePatterns = [],
+        int $maxFilesCnt = 100,
+        bool $getHidden = false,
+        int $maxSizeBytes = 1024 * 1024
+    ) {
+        $hashSigFile = $this->hashSigFile;
+        if (!$hashSigFile) {
+            throw new \Exception("HashSig file must be set by ->setDir");
+        }
+        $expectedIndexFile = '/' . self::HASHSIG_FILE_INDEX . self::HASHSIG_FILE_EXT;
+        $isIndex = \substr($hashSigFile, -\strlen($expectedIndexFile)) === $expectedIndexFile;
+        if (!$isIndex) {
+            throw new \Exception("HashSig file is not index-name, expected: $expectedIndexFile");
+        }
+        
+        $filesHashLenArr = $this->getFilesFromSrcPath(
+            $extArr,
+            $excludePatterns,
+            $maxFilesCnt,
+            $getHidden,
+            $maxSizeBytes
+        );
+
+        $result = $this->writeHashSigFile($filesHashLenArr);
+        return $result;
+    }
 
     public function getFilesFromSrcPath(
         array $extArr = ['*'],
@@ -240,22 +269,5 @@ class HashSigCreater extends HashSigBase {
         }
 
         return $changedFilesArr;
-    }
-    
-    public function loadHashSigArr(string $hashSigFileFull, bool $doNotVerifyHash = false, bool $doNotVerifySignature = false): ?array {
-        $hashSigFileFull = \strtr($hashSigFileFull, '\\', '/');
-        $leftPartOfKey = \dirname($hashSigFileFull);
-        if (!\file_exists($hashSigFileFull)) {
-            return null;            
-        }
-        $hashSignedStr = \file_get_contents($hashSigFileFull);
-        if (!$hashSignedStr) {
-            return null;
-        }
-        $hashSignedArr = $this->unpackHashSignedStr($hashSignedStr, $leftPartOfKey, $doNotVerifyHash, $doNotVerifySignature);
-        if (!$hashSignedArr) {
-            return null;
-        }
-        return $hashSignedArr;
     }
 }
