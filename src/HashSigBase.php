@@ -15,8 +15,11 @@ class HashSigBase {
     public $ownSignerObj = null;
     public $ownPubKeyBin = null;
 
-    public function setDir(string $srcPath, string $hashSigFile = null): void
+    public function setDir(string $srcPath = null, string $hashSigFile = null): void
     {
+        if (!$srcPath) {
+            $srcPath = $this->srcPath;
+        }
         $hnRp = \realpath($srcPath);
         if (empty($hnRp)) {
             throw new \InvalidArgumentException("Directory $srcPath does not exist.");
@@ -185,5 +188,45 @@ class HashSigBase {
         }
 
         return $resultArr;
+    }
+
+    public function loadHashSigArr(string $hashSigFileFull, $leftPartOfKey = null, bool $doNotVerifyHash = false, bool $doNotVerifySignature = false): ?array {
+        $hashSigFileFull = \strtr($hashSigFileFull, '\\', '/');
+        if (\is_null($leftPartOfKey)) {
+            $leftPartOfKey = \dirname($hashSigFileFull);
+        }
+
+        $hashSignedStr = $this->peekFromURLorFile($hashSigFileFull);
+
+        if (!$hashSignedStr) {
+            return null;
+        }
+        $hashSignedArr = $this->unpackHashSignedStr($hashSignedStr, $leftPartOfKey, $doNotVerifyHash, $doNotVerifySignature);
+        if (!$hashSignedArr) {
+            return null;
+        }
+        return $hashSignedArr;
+    }
+    
+    public function peekFromURLorFile(string $urlORfile, int $fileExpectedLen = null, int $fileOffset = 0): ?string {
+        if (\strpos($urlORfile, '://')) {
+            // remote url?
+            $context = \stream_context_create([
+                "ssl" => [
+                    "verify_peer" => false,
+                    "verify_peer_name" => false,
+                ],
+            ]);
+            $dataStr = @\file_get_contents($urlORfile, false, $context, $fileOffset);
+        } else {
+            if (!\file_exists($urlORfile)) {
+                return null;            
+            }
+            $dataStr = \file_get_contents($urlORfile, false, null, $fileOffset, $fileExpectedLen);
+        }
+        if (!is_string($dataStr)) {
+            return null;
+        }
+        return $dataStr;
     }
 }
