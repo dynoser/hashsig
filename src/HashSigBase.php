@@ -89,13 +89,15 @@ class HashSigBase {
         }
         // set EOL to canonical
         if (false !== \strpos($hashSignedStr, "\r")) {
-            $hashSignedStr = (false !== \strpos($hashSignedStr, "\n\r"))
-            ? \strtr($hashSignedStr, ["\r" => '']) : \strtr($hashSignedStr, "\r", "\n");
+            $hashSignedStr = \strtr($hashSignedStr, ["\r" => '']);
         }
         
         $firstStrEndPos = \strpos($hashSignedStr, "\n");
+        if (!$firstStrEndPos) {
+            return null;
+        }
         $signStr = \substr($hashSignedStr, 0 , $firstStrEndPos);
-        $signArr = explode('~', $signStr);
+        $signArr = \explode('~', $signStr);
         if (count($signArr) < 5) {
             return null;
         }
