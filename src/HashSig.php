@@ -49,6 +49,11 @@ class HashSig extends HashSigBase {
                 $fileData = $this->peekFromURLorFile($fileURL, $fileExpectedLen);
                 if (!\is_null($fileData)) {
                     $chkHashHex = \hash($this->hashAlgName, $fileData);
+                    if ($chkHashHex !== $fileHashHex && false !== \strpos($fileData, "\r")) {
+                        // try set EOL to canonical
+                        $fileData = \strtr($fileData, ["\r" => '']);
+                        $chkHashHex = \hash($this->hashAlgName, $fileData);
+                    }
                     if ($chkHashHex !== $fileHashHex) {
                         $errMsgArr[] = "Different hash in $fileURL";
                         $fileData = null;
