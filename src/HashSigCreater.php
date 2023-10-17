@@ -66,6 +66,7 @@ class HashSigCreater extends HashSigBase {
         }
         if (!$isIndex && $targetAlreadyExist) {
             $filesHashLenArr = $this->loadHashSigArr($hashSigFile, $this->srcPath . '/', true, true);
+            $filesHashLenArr = self::resovleFileHashes($this->srcPath, $filesHashLenArr, $this->hashAlgName, $maxSizeBytes, $maxFilesCnt);
         }
 
         $result = $this->writeHashSigFile($filesHashLenArr);
@@ -104,11 +105,7 @@ class HashSigCreater extends HashSigBase {
         int $maxFilesCnt = 100,
         bool $getHidden = false,
         int $maxSizeBytes = 1024 * 1024
-    ) {
-        $filesHashLenArr = [];
-        $filesCnt = 0;
-        $l = \strlen($srcPath);
-        
+    ) {        
         $maxDepth = ($maxFilesCnt > 99) ? 99: $maxFilesCnt;
         
         $filesArr = WalkDir::getFilesArr(
@@ -121,8 +118,18 @@ class HashSigCreater extends HashSigBase {
             $maxDepth
         );
         
+        return self::resovleFileHashes($srcPath, $filesArr, $hashAlgName, $maxSizeBytes, $maxFilesCnt);
+    }
+
+    public static function resovleFileHashes(string $srcPath, array $filesArr, string $hashAlgName, $maxSizeBytes, $maxFilesCnt) {
+        $filesHashLenArr = [];
         $filesCnt = 0;
+        $l = \strlen($srcPath);
+
         foreach($filesArr as $fullName => $fileSize) {
+            if (\is_array($fileSize)) {
+                $fileSize = $fileSize[2];
+            }
             if ($fileSize <= $maxSizeBytes) {
                 $filesCnt++;
             }
@@ -133,6 +140,9 @@ class HashSigCreater extends HashSigBase {
         }
 
         foreach($filesArr as $fullName => $fileSize) {
+            if (\is_array($fileSize)) {
+                $fileSize = $fileSize[2];
+            }
             if (!$fileSize || $fileSize > $maxSizeBytes) {
                 continue;
             }
