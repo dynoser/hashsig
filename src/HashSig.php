@@ -1,8 +1,6 @@
 <?php
 namespace dynoser\hashsig;
 
-use dynoser\walkdir\WalkDir;
-
 class HashSig extends HashSigBase {
     public string $tempZipFile = '';
     
@@ -24,7 +22,8 @@ class HashSig extends HashSigBase {
         string $hashSigFileFull,
         string $saveToDir = null,
         array $baseURLs = null,
-        bool $doNotSaveFiles = false
+        bool $doNotSaveFiles = false,
+        bool $doNotOverWrite = false
     ) {
         if (\substr($hashSigFileFull, -4) === '.zip') {
             $zipMode = true;
@@ -104,14 +103,16 @@ class HashSig extends HashSigBase {
             } else {
                 if (!$doNotSaveFiles) {
                     $targetFileName = $saveToDir . '/' . $shortName;
-                    if (false !== \strpos($shortName, '/')) {
-                        $toDir = \dirname($targetFileName);
-                        if (!\is_dir($toDir) && !\mkdir($toDir, 0777, true)) {
-                            throw new \Exception("Can't write to file: $targetFileName");
+                    if (!$doNotOverWrite || !\is_file($targetFileName)) {
+                        if (false !== \strpos($shortName, '/')) {
+                            $toDir = \dirname($targetFileName);
+                            if (!\is_dir($toDir) && !\mkdir($toDir, 0777, true)) {
+                                throw new \Exception("Can't write to file: $targetFileName");
+                            }
                         }
+                        $wb = \file_put_contents($targetFileName, $fileData);
+                        $fileData = $targetFileName;
                     }
-                    $wb = \file_put_contents($targetFileName, $fileData);
-                    $fileData = $targetFileName;
                 }
                 
                 $successArr[$shortName] = $fileData;
