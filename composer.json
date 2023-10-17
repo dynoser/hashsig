@@ -1,6 +1,7 @@
 {
     "name": "dynoser/hashsig",
     "description": "Provides work with lists of files for which a list of hashes is signed",
+    "version": "1.0.1",
     "autoload": {
         "psr-4": {
             "dynoser\\hashsig\\": "src/"
