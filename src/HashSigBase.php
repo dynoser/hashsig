@@ -1,6 +1,8 @@
 <?php
 namespace dynoser\hashsig;
 
+use \ZipArchive;
+
 class HashSigBase {
     public string $srcPath = '';
     public string $hashSigFile = '';
@@ -210,7 +212,7 @@ class HashSigBase {
         return $hashSignedArr;
     }
     
-    public function peekFromURLorFile(string $urlORfile, int $fileExpectedLen = null, int $fileOffset = 0): ?string {
+    public static function peekFromURLorFile(string $urlORfile, int $fileExpectedLen = null, int $fileOffset = 0): ?string {
         if (\strpos($urlORfile, '://')) {
             // remote url?
             $context = \stream_context_create([
@@ -224,11 +226,14 @@ class HashSigBase {
             if (!\file_exists($urlORfile)) {
                 return null;            
             }
-            $dataStr = \file_get_contents($urlORfile, false, null, $fileOffset, $fileExpectedLen);
+            $dataStr = \file_get_contents($urlORfile, false, null, $fileOffset);
         }
-        if (!is_string($dataStr)) {
+        if (!\is_string($dataStr)) {
             return null;
         }
         return $dataStr;
     }
+    
+
+
 }
