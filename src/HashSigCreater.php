@@ -51,19 +51,22 @@ class HashSigCreater extends HashSigBase {
         if (!$hashSigFile) {
             throw new \Exception("HashSig file must be set by ->setDir");
         }
+        $targetAlreadyExist = \is_file($hashSigFile);
+
         $expectedIndexFile = '/' . self::HASHSIG_FILE_INDEX . self::HASHSIG_FILE_EXT;
         $isIndex = \substr($hashSigFile, -\strlen($expectedIndexFile)) === $expectedIndexFile;
-        if (!$isIndex) {
-            throw new \Exception("HashSig file is not index-name, expected: $expectedIndexFile");
+        if ($isIndex || !$targetAlreadyExist) {
+            $filesHashLenArr = $this->getFilesFromSrcPath(
+                $extArr,
+                $excludePatterns,
+                $maxFilesCnt,
+                $getHidden,
+                $maxSizeBytes
+            );    
         }
-        
-        $filesHashLenArr = $this->getFilesFromSrcPath(
-            $extArr,
-            $excludePatterns,
-            $maxFilesCnt,
-            $getHidden,
-            $maxSizeBytes
-        );
+        if (!$isIndex && $targetAlreadyExist) {
+            $filesHashLenArr = $this->loadHashSigArr($hashSigFile, $this->srcPath . '/', true, true);
+        }
 
         $result = $this->writeHashSigFile($filesHashLenArr);
         if (!\is_string($result)) {
