@@ -16,7 +16,7 @@ class HashSigCreater extends HashSigBase {
         $this->setOwnSignerObj($ownSignerObj);
     }
     
-    public function makeIndegHashSignedZip(
+    public function makeIndexHashSignedZip(
         array $extArr = ['*'],
         array $excludePatterns = [],
         int $maxFilesCnt = 100,
