@@ -4,8 +4,20 @@ namespace dynoser\hashsig;
 use dynoser\walkdir\WalkDir;
 
 class HashSig extends HashSigBase {
+    public string $tempZipFile = '';
+    
     public function __construct($ownSignerObj = null) {
         $this->setOwnSignerObj($ownSignerObj);
+    }
+    
+    public function __destruct() {
+        $this->unlinkTempZipFile();
+    }
+    
+    public function unlinkTempZipFile() {
+        if ($this->tempZipFile && \file_exists($this->tempZipFile) && @\unlink($this->tempZipFile)) {
+            $this->tempZipFile = '';
+        }
     }
 
     public function getFilesByHashSig(
@@ -14,11 +26,30 @@ class HashSig extends HashSigBase {
         array $baseURLs = null,
         bool $doNotSaveFiles = false
     ) {
+        if (\substr($hashSigFileFull, -4) === '.zip') {
+            $zipMode = true;
+            $zipData = $this->peekFromURLorFile($hashSigFileFull);
+            if (!$zipData) {
+                throw new \Exception("Can't read data from $hashSigFileFull");
+            }
+            $hashSigFileFull = \substr($hashSigFileFull, 0, -4);
+        } else {
+            $zipMode = false;
+        }
+        
         $baseHSFile = \basename($hashSigFileFull);
+        
+        if ($zipMode) {
+            $this->tempZipFile = \tempnam(\sys_get_temp_dir(), $baseHSFile);
+            $wb = \file_put_contents($this->tempZipFile, $zipData);
+            if (!$wb) {
+                throw new \Exception("Can't write temporary downloaded zip-archive data to " . $this->tempZipFile);
+            }
+        }
         
         // check-prepare saveToDir
         $chkSaveToDir = $saveToDir ? $saveToDir : $this->srcPath;
-        if (!\is_dir($chkSaveToDir) && !\mkdir($chkSaveToDir)) {
+        if (!$doNotSaveFiles && !\is_dir($chkSaveToDir) && !\mkdir($chkSaveToDir)) {
             throw new \Exception("Not found and can't create target dir: $chkSaveToDir");
         }
         if ($saveToDir) {
@@ -27,8 +58,13 @@ class HashSig extends HashSigBase {
         $saveToDir = $this->srcPath;
         $targetHSFile = $this->hashSigFile;
 
-        if (\is_null($baseURLs)) {
-            $baseURLs = [\dirname($hashSigFileFull) .'/'];
+        if ($zipMode) {
+            $baseURLs = ['zip://' . $this->tempZipFile .'#'];
+            $hashSigFileFull = $baseURLs[0] . $baseHSFile;
+        } else {
+            if (\is_null($baseURLs)) {
+                $baseURLs = [\dirname($hashSigFileFull) .'/'];
+            }
         }
 
         $hashSignedArr = $this->loadHashSigArr($hashSigFileFull, '');
@@ -81,6 +117,8 @@ class HashSig extends HashSigBase {
                 $successArr[$shortName] = $fileData;
             }
         }
+        
+        $this->unlinkTempZipFile();
 
         return \compact('successArr', 'errorsArr', 'errMsgArr');
     }
