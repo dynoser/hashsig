@@ -3,6 +3,8 @@ namespace dynoser\hashsig;
 
 use dynoser\walkdir\WalkDir;
 
+use \ZipArchive;
+
 class HashSigCreater extends HashSigBase {
     
     public static $dontConvertEOLextArr = ',exe,jpg,jpeg,png,gif,ico,bin';
@@ -12,6 +14,30 @@ class HashSigCreater extends HashSigBase {
             self::$dontConvertEOLextArr = \array_flip(\explode(',', self::$dontConvertEOLextArr));
         }
         $this->setOwnSignerObj($ownSignerObj);
+    }
+    
+    public function makeIndegHashSignedZip(
+        array $extArr = ['*'],
+        array $excludePatterns = [],
+        int $maxFilesCnt = 100,
+        bool $getHidden = false,
+        int $maxSizeBytes = 1024 * 1024  
+    ) {
+        $filesHashLenArr = $this->makeIndexHashSignedFile(
+            $extArr,
+            $excludePatterns,
+            $maxFilesCnt,
+            $getHidden,
+            $maxSizeBytes      
+        );
+        if (!\is_array($filesHashLenArr)) {
+            throw new \Exception("Unexpected type of resuls, code error");
+        }
+        
+        $zipFileName = $this->hashSigFile . '.zip';
+        $filesHashLenArr[$this->hashSigFile] = true;
+        $result = self::packToZip($zipFileName, $this->srcPath, $filesHashLenArr);
+        return $result;
     }
     
     public function makeIndexHashSignedFile(
@@ -40,7 +66,11 @@ class HashSigCreater extends HashSigBase {
         );
 
         $result = $this->writeHashSigFile($filesHashLenArr);
-        return $result;
+        if (!\is_string($result)) {
+            throw new \Exception("Unexpected result, code error");
+        }
+
+        return $filesHashLenArr;
     }
 
     public function getFilesFromSrcPath(
@@ -51,6 +81,7 @@ class HashSigCreater extends HashSigBase {
         int $maxSizeBytes = 1024 * 1024
     ) {
         $excludePatterns[] = '*' . self::HASHSIG_FILE_EXT;
+        $excludePatterns[] = '*' . self::HASHSIG_FILE_EXT . '.zip';
         return self::getFilesFromPath(
             $this->srcPath,
             $this->hashAlgName,
@@ -294,5 +325,79 @@ class HashSigCreater extends HashSigBase {
         }
 
         return $changedFilesArr;
+    }
+    
+    public static function packToZip(string $zipFileName, string $pathSrc, array $filesInKeysArr) {
+        $zip = new ZipArchive();
+        if ($zip->open($zipFileName, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return false;
+        }
+        $lp = \strlen($pathSrc);
+        $createdSubDirs = [];
+        foreach ($filesInKeysArr as $absORrelFilePath => $value) {
+            if (\substr($absORrelFilePath, 0, $lp) === $pathSrc) {
+                $relativeFilePath = \substr($absORrelFilePath, $lp + 1);
+            } else {
+                $relativeFilePath = $absORrelFilePath;
+            }
+            $sourceFilePath = $pathSrc . '/' . $relativeFilePath;
+
+            $i = -1;
+            while($i = \strpos($relativeFilePath, '/', $i + 1)) {
+                $subDir = substr($relativeFilePath, 0, $i);
+                if (empty($createdSubDirs[$subDir])) {
+                     $zip->addEmptyDir($subDir);
+                     $createdSubDirs[$subDir] = true;
+                }
+            }
+            $zip->addFile($sourceFilePath, $relativeFilePath);
+        }
+
+        $zip->close();
+        return true;
+    }
+
+    public static function unpackZip(string $zipFileName, string $extractPath) {
+        $zip = new ZipArchive();
+        if ($zip->open($zipFileName) !== true) {
+            return false;
+        }
+        
+        $rp = \realpath($extractPath);
+        if (!$rp) {
+            !\mkdir($extractPath, 0777, true);
+            $rp = \realpath($extractPath);
+        }
+        if ($rp) {
+            $extractPath = \strtr($rp, '\\', '/');
+        } else {
+            return false;
+        }
+
+        $createdSubDirs = [];
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $fileInfo = $zip->statIndex($i);
+
+            $entryName = \strtr($fileInfo['name'], '\\', '/');
+
+            if (\strpos($entryName, '..') === false) {
+                $targetPath = $extractPath . '/' . $entryName;
+
+                if (\substr($entryName, -1) === '/') {
+                    if (empty($createdSubDirs[$targetPath])) {
+                        if (!\is_dir($targetPath) && !\mkdir($targetPath, 0777, true)) {
+                            throw new \Exception("Can't create subdir: $targetPath");
+                        }
+                        $createdSubDirs[$targetPath] = true;
+                    }
+                } else {
+                    $zip->extractTo($extractPath, $entryName);
+                }
+            }
+        }
+
+        $zip->close();
+        return true;
     }
 }
