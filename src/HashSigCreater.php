@@ -108,6 +108,9 @@ class HashSigCreater extends HashSigBase {
     ) {        
         $maxDepth = ($maxFilesCnt > 99) ? 99: $maxFilesCnt;
         
+        WalkDir::$fileCountTotal = 0;
+        WalkDir::$fileCountThreshold = $maxFilesCnt;
+
         $filesArr = WalkDir::getFilesArr(
             $srcPath,
             false,// $setKeys
