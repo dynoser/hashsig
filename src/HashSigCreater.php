@@ -8,6 +8,14 @@ use \ZipArchive;
 class HashSigCreater extends HashSigBase {
     
     public static $dontConvertEOLextArr = ',exe,jpg,jpeg,png,gif,ico,bin';
+
+    public static array $optionNameTypeArr = [
+        'filePatterns' => 'array',
+        'excludePatterns' => 'array',
+        'maxFilesCnt' => 'integer',
+        'getHidden' => 'boolean|integer',
+        'maxSizeBytes' => 'integer',
+    ];
     
     public function __construct($ownSignerObj = null) {
         if (\is_string(self::$dontConvertEOLextArr)) {
@@ -17,18 +25,20 @@ class HashSigCreater extends HashSigBase {
     }
     
     public function makeIndexHashSignedZip(
-        array $extArr = ['*'],
+        array $filePatterns = ['*'],
         array $excludePatterns = [],
         int $maxFilesCnt = 100,
         bool $getHidden = false,
-        int $maxSizeBytes = 1024 * 1024  
-    ) {
+        int $maxSizeBytes = 1024 * 1024,
+        array $rewriteOptions = []
+    ): ?array {
         $filesHashLenArr = $this->makeIndexHashSignedFile(
-            $extArr,
+            $filePatterns,
             $excludePatterns,
             $maxFilesCnt,
             $getHidden,
-            $maxSizeBytes      
+            $maxSizeBytes,
+            $rewriteOptions
         );
         if (!\is_array($filesHashLenArr)) {
             throw new \Exception("Unexpected type of resuls, code error");
@@ -37,31 +47,47 @@ class HashSigCreater extends HashSigBase {
         $zipFileName = $this->hashSigFile . '.zip';
         $filesHashLenArr[$this->hashSigFile] = true;
         $result = self::packToZip($zipFileName, $this->srcPath, $filesHashLenArr);
-        return $result;
+        if (!$result) {
+            //err
+            return null;
+        }
+        return $filesHashLenArr;
     }
     
     public function makeIndexHashSignedFile(
-        array $extArr = ['*'],
+        array $filePatterns = ['*'],
         array $excludePatterns = [],
         int $maxFilesCnt = 100,
         bool $getHidden = false,
-        int $maxSizeBytes = 1024 * 1024
+        int $maxSizeBytes = 1024 * 1024,
+        array $rewriteOptions = []
     ) {
         $hashSigFile = $this->hashSigFile;
         if (!$hashSigFile) {
             throw new \Exception("HashSig file must be set by ->setDir");
         }
+
+        $optionsArr = self::optionsForFile($hashSigFile, \compact(
+            'filePatterns',
+            'excludePatterns',
+            'maxFilesCnt',
+            'getHidden',
+            'maxSizeBytes'
+        ), $rewriteOptions);
+        \extract($optionsArr);        
+        
         $targetAlreadyExist = \is_file($hashSigFile);
 
         $expectedIndexFile = '/' . self::HASHSIG_FILE_INDEX . self::HASHSIG_FILE_EXT;
         $isIndex = \substr($hashSigFile, -\strlen($expectedIndexFile)) === $expectedIndexFile;
         if ($isIndex || !$targetAlreadyExist) {
             $filesHashLenArr = $this->getFilesFromSrcPath(
-                $extArr,
+                $filePatterns,
                 $excludePatterns,
                 $maxFilesCnt,
                 $getHidden,
-                $maxSizeBytes
+                $maxSizeBytes,
+                $rewriteOptions
             );    
         }
         if (!$isIndex && $targetAlreadyExist) {
@@ -78,7 +104,7 @@ class HashSigCreater extends HashSigBase {
     }
 
     public function getFilesFromSrcPath(
-        array $extArr = ['*'],
+        array $filePatterns = ['*'],
         array $excludePatterns = [],
         int $maxFilesCnt = 100,
         bool $getHidden = false,
@@ -86,10 +112,12 @@ class HashSigCreater extends HashSigBase {
     ) {
         $excludePatterns[] = '*' . self::HASHSIG_FILE_EXT;
         $excludePatterns[] = '*' . self::HASHSIG_FILE_EXT . '.zip';
+        $excludePatterns[] = '*' . self::HASHSIG_FILE_EXT . '.json';
+
         return self::getFilesFromPath(
             $this->srcPath,
             $this->hashAlgName,
-            $extArr,
+            $filePatterns,
             $excludePatterns,
             $maxFilesCnt,
             $getHidden,
@@ -100,7 +128,7 @@ class HashSigCreater extends HashSigBase {
     public static function getFilesFromPath(
         string $srcPath,
         string $hashAlgName,
-        array $extArr = ['*'],
+        array $filePatterns = ['*'],
         array $excludePatterns = [],
         int $maxFilesCnt = 100,
         bool $getHidden = false,
@@ -114,7 +142,7 @@ class HashSigCreater extends HashSigBase {
         $filesArr = WalkDir::getFilesArr(
             $srcPath,
             false,// $setKeys
-            $extArr,
+            $filePatterns,
             $excludePatterns,
             $getHidden,
             true,
@@ -415,5 +443,48 @@ class HashSigCreater extends HashSigBase {
 
         $zip->close();
         return true;
+    }
+
+    public function optionsForFile(
+        string $forFileFull,
+        array $setIfNotFound = [],
+        array $rewriteOptions = []
+    ): array {
+        if (!$forFileFull) {
+            return [];
+        }
+        $optionsFile = $forFileFull . '.json';
+        if (\is_file($optionsFile)) {
+            $jsonDataStr = \file_get_contents($optionsFile);
+            if (!$jsonDataStr) {
+                return [];
+            }
+            $jsonDataArr = \json_decode($jsonDataStr, true);
+            if (!\is_array($jsonDataArr)) {
+                return [];
+            }
+        } else {
+            $jsonDataArr = [];
+            $rewriteOptions = \array_merge($setIfNotFound, $rewriteOptions);
+        }
+        if ($rewriteOptions) {
+            $jsonDataArr = \array_merge($jsonDataArr, $rewriteOptions);
+            $jsonDataStr = \json_encode($jsonDataArr,  \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES);
+            $wb = \file_put_contents($optionsFile, $jsonDataStr);
+        }
+
+        $optionsArr = [];
+
+        foreach(self::$optionNameTypeArr as $exportName => $expectedType) {
+            if (\array_key_exists($exportName, $jsonDataArr)) {
+                $optionValue = $jsonDataArr[$exportName];
+                $optionType = \gettype($optionValue);
+                if (!$expectedType || false !== \strpos($expectedType, $optionType)) {
+                    $optionsArr[$exportName] = $optionValue;
+                }
+            }
+        }
+
+        return $optionsArr;
     }
 }
