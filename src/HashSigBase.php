@@ -16,6 +16,9 @@ class HashSigBase {
     public $canSign = false;
     public $ownSignerObj = null;
     public $ownPubKeyBin = null;
+    
+    public string $lastSuccessPubKeyBin = '';
+    public $trustKeysObj = null;
 
     public function setDir(string $srcPath = null, string $hashSigFile = null): void
     {
@@ -31,10 +34,11 @@ class HashSigBase {
         if ($hashSigFile) {
             $hashSigFile = \strtr($hashSigFile, '\\', '/');
             if (false === \strpos($hashSigFile, '/')) {
-                $hashSigFile = $this->srcPath . '/' . $hashSigFile;
+                $hashSigFile = $this->srcPath . '/' . \basename($hashSigFile);
             }
-            if (false === \strpos($hashSigFile, '.')) {
-                $hashSigFile .= self::HASHSIG_FILE_EXT;
+            $hashSigExt = self::HASHSIG_FILE_EXT;
+            if (\substr($hashSigFile, -\strlen($hashSigExt)) !== $hashSigExt) {
+                $hashSigFile .= $hashSigExt;
             }
             $this->hashSigFile = $hashSigFile;
         } else {
@@ -176,6 +180,10 @@ class HashSigBase {
             
             if (!$signIsOk) {
                 throw new \Exception("Invalid signature");
+            }
+            $this->lastSuccessPubKeyHex = $keyPubBin;
+            if ($this->trustKeysObj && !$this->isTrusted($keyPubBin)) {
+                throw new \Exception("Package signature is OK, but public key not trusted: " . $keyPubB64);
             }
         }
 
