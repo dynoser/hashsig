@@ -227,6 +227,9 @@ foreach($optionsArr as $optName => $optValue) {
     case 'autoname':
         $optValue = \basename(\dirname($srcPath));
     case 'name':
+        if (false !== \strpos($optValue, '.')) {
+            throw new \Exception("Can't use names with dots");
+        }
         $hashSigName = $optValue;
         break;
     case 'key':
