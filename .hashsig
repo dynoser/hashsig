@@ -1,6 +1,0 @@
-hashsig: f5b42330f8c0199985e3d943701666bfb0f80712048500488cff3bc6841adfd8 ~ filescnt: 5 ~ hashalg: sha256 ~ signalg: ed25519 ~ pubkey: EkDohf20jN/9kXW/WL3ZXo245ggek9TiTWzzmBriMTU= ~ signature: 0RD7nz9nlRUgQeHzOPvl3sZQU0X6cR2/5sHlw3B0AsqnVUQvJ4RYbON8RrsYDi+wuffB43tVPAr8GhUANgCpDw==
-composer.json: d618064979270f6c7a70efb8aa255a5c74163a6db0eeda6422a6b72768354edd 576
-hashsig.php: 0c54fd827fd7018d3b586cfd480cedd269e8977bafaa7fdc4c61c8d2b4980989 15111
-src/HashSig.php: 83fa500efa5ac1c3073ec94958d34e5a1c7b8f1661dc144194c78dd5ca43219a 4821
-src/HashSigBase.php: 8ff48b87bcbded0f936e8f84c276b6eda25cc5f15b386824a8969c66bca5856c 8667
-src/HashSigCreater.php: 13ce19c4fd0e04283f4308f374d259f4046bd60feb8247016d86187baac622d9 17707
