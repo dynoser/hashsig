@@ -58,11 +58,11 @@ class HashSig extends HashSigBase {
         $targetHSFile = $this->hashSigFile;
 
         if ($zipMode) {
-            $baseURLs = ['zip://' . $this->tempZipFile .'#'];
+            $baseURLs = ['zip://' . $this->tempZipFile . '#'];
             $hashSigFileFull = $baseURLs[0] . $baseHSFile;
         } else {
             if (\is_null($baseURLs)) {
-                $baseURLs = [\dirname($hashSigFileFull) .'/'];
+                $baseURLs = [\dirname($hashSigFileFull) . '/'];
             }
         }
 
