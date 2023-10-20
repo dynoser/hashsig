@@ -190,7 +190,7 @@ foreach($optionsArr as $optName => $optValue) {
             $targetPath = \realpath($optValue);
             if (!$targetPath) {
                 $targetPath = \realpath(\dirname($optValue));
-                if (!$targetPath || !\is_dir($targetPath) || (false !== \strpos($optValue, '.'))) {
+                if (!$targetPath || !\is_dir($targetPath)) {
                     throw new \Exception("Can't create target dir more than 1 level deep: $optValue");
                 }
                 $targetPath .= '/'. basename($optValue);
@@ -217,6 +217,13 @@ foreach($optionsArr as $optName => $optValue) {
         $maxFilesCnt = $optValue;
         $rewriteOptions['maxFilesCnt'] = $maxFilesCnt;
         break;
+    case 'maxsize':
+        case 'maxsizebytes':
+            $maxSizeBytes = (int)$optValue;
+            if ($maxSizeBytes) {
+                $rewriteOptions['maxSizeBytes'] = $maxSizeBytes;
+            }
+        break;  
     case 'name':
         $hashSigName = $optValue;
         break;
