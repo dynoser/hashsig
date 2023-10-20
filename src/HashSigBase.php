@@ -241,7 +241,4 @@ class HashSigBase {
         }
         return $dataStr;
     }
-    
-
-
 }

@@ -200,8 +200,13 @@ foreach($optionsArr as $optName => $optValue) {
             throw new \Exception("Only 1 'target' parameter supported");
         }
         break;
+    case 'ex':
     case 'exclude':
-        $excludePatterns[] = $optValue;
+        if (\is_string($optValue)) {
+            $excludePatterns[] = $optValue;
+        } elseif (\is_array($optValue)) {
+            $excludePatterns += $optValue;
+        }
         $rewriteOptions['excludePatterns'] = $excludePatterns;
         break;
     case 'pattern':
@@ -230,8 +235,9 @@ foreach($optionsArr as $optName => $optValue) {
     case 'keyrewrite':
         $kopt['keyrewrite'] = !empty($optValue);
         break;
-    case 'write':
     case 'rewrite':
+        $removeBefore = true;
+    case 'write':
         $writeMode = empty($checkMode) && empty($optionsArr['check']) && !empty($optValue);
         break;
     case 'check':
@@ -389,6 +395,14 @@ try {
             }
         } else {
             echo "Write mode ON\n";
+            if (!empty($removeBefore) && \is_file($hashSigFileFull)) {
+                echo " Remove old: $hashSigFileFull ... ";
+                if (\unlink($hashSigFileFull)) {
+                    echo "Success \n";
+                } else {
+                    echo "ERROR \n";
+                }
+            }
             $filesArr = $hsObj->makeIndexHashSignedZip(
                 $filePatterns,
                 $excludePatterns,
