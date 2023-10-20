@@ -223,7 +223,9 @@ foreach($optionsArr as $optName => $optValue) {
             if ($maxSizeBytes) {
                 $rewriteOptions['maxSizeBytes'] = $maxSizeBytes;
             }
-        break;  
+        break;
+    case 'autoname':
+        $optValue = \basename(\dirname($srcPath));
     case 'name':
         $hashSigName = $optValue;
         break;
