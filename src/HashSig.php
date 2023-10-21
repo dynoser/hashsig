@@ -1,7 +1,8 @@
 <?php
 namespace dynoser\hashsig;
 
-class HashSig extends HashSigBase {
+class HashSig extends HashSigBase
+{
     public string $tempZipFile = '';
     
     public function __construct($ownSignerObj = null) {
