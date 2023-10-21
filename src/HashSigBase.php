@@ -222,7 +222,6 @@ class HashSigBase {
     
     public static function peekFromURLorFile(string $urlORfile, int $fileExpectedLen = null, int $fileOffset = 0): ?string {
         if (\strpos($urlORfile, '://')) {
-            // remote url?
             $context = \stream_context_create([
                 "ssl" => [
                     "verify_peer" => false,

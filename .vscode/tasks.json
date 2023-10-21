@@ -1,0 +1,63 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run HashSig (CTRL+SHIFT+B)",
+            "type": "shell",
+            "command": "php",
+            "args": [
+                "${workspaceFolder}/hashsig.php",
+                "--pathfrom=${file}",
+                "--write"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": [],
+            "runOptions": {
+                "runOn": "default"
+            }
+        },
+        {
+            "label": "Create HashSig",
+            "type": "shell",
+            "command": "php",
+            "args": [
+                "${workspaceFolder}/hashsig.php",
+                "--pathfrom=${file}",
+                "--write",
+                "--autonamebypath"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Verify HashSig",
+            "type": "shell",
+            "command": "php",
+            "args": [
+                "${workspaceFolder}/hashsig.php",
+                "--pathfrom=${file}",
+                "--check"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
