@@ -172,6 +172,41 @@ foreach($optionsArr as $optName => $optValue) {
             throw new \Exception("Invalid url=$optValue");
         }
         break;
+    case 'pathfrom':
+        if (!\is_string($optValue)) {
+            throw new \Exception("Only 1 $optName-parameter supported");
+        }
+        $configExt = HashSigBase::HASHSIG_FILE_EXT . '.json';
+        $itsFile = \is_file($optValue);
+        $itsDir  = \is_dir($optValue);
+        $hashSigConfig = ($itsFile && (\substr($optValue, -\strlen($configExt)) === $configExt)) ? $optValue : null;
+        $optValue = $itsDir ? $optValue : \dirname($optValue);
+        $srcPath = \strtr($optValue, '\\', '/');
+        if (!$hashSigConfig) {
+            if (($itsFile || $itsDir) && !empty($optionsArr['autonamebypath'])) {
+                $hashSigConfig = $srcPath . '/temp' . $configExt;
+            } else {
+                while (\strrpos($srcPath, '/')) {
+                    $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' . $configExt);
+                    if (!empty($hashSigFilesArr)) {
+                        echo "Found configurations:\n";
+                        foreach($hashSigFilesArr as $n => $hashSigConfig) {
+                            echo " $hashSigConfig\n";
+                            if ($n && empty($optionsArr['getfirstconfig'])) {
+                                throw new \Exception("You may use option --getfirstconfig");
+                            }
+                        }
+                        break;
+                    }
+                    $srcPath = \dirname($srcPath);
+                }
+            }
+        }
+        if (!$hashSigConfig) {
+            throw new \Exception("Can't autodetect srcPath by pathfrom=$optValue");
+        }
+        $hashSigName = \substr(\basename($hashSigConfig), 0, -\strlen($configExt));
+        $optValue = \dirname($hashSigConfig);
     case 'path':
     case 'srcpath':
         if (\is_string($optValue)) {
@@ -218,14 +253,18 @@ foreach($optionsArr as $optName => $optValue) {
         $rewriteOptions['maxFilesCnt'] = $maxFilesCnt;
         break;
     case 'maxsize':
-        case 'maxsizebytes':
+    case 'maxsizebytes':
             $maxSizeBytes = (int)$optValue;
             if ($maxSizeBytes) {
                 $rewriteOptions['maxSizeBytes'] = $maxSizeBytes;
             }
         break;
-    case 'autoname':
-        $optValue = \basename(\dirname($srcPath));
+    case 'autonamebypath':
+        $tmpSrcPath = $srcPath;
+        do {
+            $optValue = \basename($tmpSrcPath);
+            $tmpSrcPath = \dirname($tmpSrcPath);
+        } while ($optValue === 'src');
     case 'name':
         if (false !== \strpos($optValue, '.')) {
             throw new \Exception("Can't use names with dots");
@@ -445,7 +484,7 @@ if (\is_array($filesArr)) {
             echo " $shortFileName\n";
         }
         echo "Total $filesCnt files\n";
-        if (WalkDir::$fileCountTotal > WalkDir::$fileCountThreshold) {
+        if (WalkDir::$fileCountThreshold && (WalkDir::$fileCountTotal > WalkDir::$fileCountThreshold)) {
             echo "--- BROKEN BY MAXFILES: " . WalkDir::$fileCountThreshold . " ---\n";
         }
         if ($writeMode) {
