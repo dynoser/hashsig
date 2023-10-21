@@ -1,14 +1,12 @@
 <?php
 namespace dynoser\hashsig;
 
-use dynoser\hashsig\HashSig;
 use dynoser\hashsig\HashSigBase;
 use dynoser\hashsig\HashSigCreater;
 use dynoser\walkdir\WalkDir;
 
-// default parameters:
+// default parameters for scan files:
 $srcPath = \getcwd();
-$targetPath = null;
 $hashSigName = '';
 $hashAlgName = 'sha256';
 $filePatterns = [];
@@ -17,56 +15,17 @@ $maxFilesCnt = 100;
 $getHidden = false;
 $maxSizeBytes = 1024 * 1024;
 
+// target mode parameters
+$targetPath = null;
 $checkMode = false;
 $writeMode = false;
 
+// keySigner parameters
 $kobj = null;
 $kopt = [
     'password' => \getenv('HASHSIG_PASSWORD'),
     'key' => \getenv('HASHSIG_KEYFILE')
 ];
-
-if (!\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
-    $myDir = \strtr(__DIR__, '\\', '/');
-    foreach([
-        \dirname($myDir, 2),
-        $myDir,
-    ] as $chkDir) {
-        $chkFile = \trim($chkDir, '\\/') . '/vendor/autoload.php';
-        if (\is_file($chkFile)) {
-            include_once $chkFile;
-            break;
-        }
-    }
-}
-
-if (!\class_exists('dynoser\\autoload\\AutoLoadSetup') && !\class_exists('dynoser\\keysigner\\KeySigner')) {
-    // set autoloader for own classes
-    spl_autoload_register(function ($classFullName) {
-        static $nameSpacesArr = [];
-        if (!$nameSpacesArr) {
-            $myDir = \strtr(__DIR__, '\\', '/');
-            $vendorDir = $myDir . '/vendor';
-            $nameSpacesArr = [
-                'dynoser\\hashsig\\' => $myDir . '/src/',
-                'dynoser\\keysigner\\' => $vendorDir . '/dynoser/keysigner/src/',
-                'dynoser\\walkdir\\' => $vendorDir . '/dynoser/walkdir/src/',
-            ];
-        }
-        foreach($nameSpacesArr as $nameSpacePrefix => $srcDir) {
-            if (\strncmp($nameSpacePrefix, $classFullName, \strlen($nameSpacePrefix)) !== 0) {
-                continue;
-            }
-            $relativeClass = \substr($classFullName, \strlen($nameSpacePrefix));
-            $file = $srcDir . str_replace('\\', '/', $relativeClass) . '.php';
-            if (\file_exists($file)) {
-                require $file;
-                break;
-            }
-        }
-    });
-}
-
 // get options from command string (or from get-parameters)
 $optionsArr = (function() {
     $optionsArr = [];
@@ -130,6 +89,57 @@ $optionsArr = (function() {
     return $optionsArr;
 })();
 
+if (!empty($optionsArr['vendorautoload']) && !\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
+    $myDir = \strtr(__DIR__, '\\', '/');
+    foreach([
+        \dirname($myDir, 2),
+        $myDir,
+    ] as $chkDir) {
+        $chkFile = \trim($chkDir, '\\/') . '/vendor/autoload.php';
+        if (\is_file($chkFile)) {
+            include_once $chkFile;
+            break;
+        }
+    }
+}
+
+$scanClassFileFn = function ($classFullName) {
+    static $nameSpacesArr = [];
+    if (!$nameSpacesArr) {
+        $myDir = \strtr(__DIR__, '\\', '/');
+        $vendorDir = $myDir . '/vendor';
+        $nameSpacesArr = [
+            'dynoser\\hashsig\\' => $myDir . '/src/',
+            'dynoser\\keysigner\\' => $vendorDir . '/dynoser/keysigner/src/',
+            'dynoser\\walkdir\\' => $vendorDir . '/dynoser/walkdir/src/',
+        ];
+    }
+    foreach($nameSpacesArr as $nameSpacePrefix => $srcDir) {
+        if (\strncmp($nameSpacePrefix, $classFullName, \strlen($nameSpacePrefix)) !== 0) {
+            continue;
+        }
+        $relativeClass = \substr($classFullName, \strlen($nameSpacePrefix));
+        $file = $srcDir . str_replace('\\', '/', $relativeClass) . '.php';
+        if (\file_exists($file)) {
+            return $file;
+        }
+    }
+    return null;
+};
+
+if (!\class_exists('dynoser\\autoload\\AutoLoadSetup') && !\class_exists('dynoser\\keysigner\\KeySigner')) {
+    // set autoloader for own classes
+    \spl_autoload_register(function ($classFullName) use ($scanClassFileFn) {
+        $file = $scanClassFileFn($classFullName);
+        if ($file) {
+            require_once $file;
+        }
+    });
+}
+
+$configExt = HashSigBase::HASHSIG_FILE_EXT . '.json';
+
+
 $url = '';
 
 if (!empty($GLOBALS['argv'][1])) {
@@ -176,7 +186,6 @@ foreach($optionsArr as $optName => $optValue) {
         if (!\is_string($optValue)) {
             throw new \Exception("Only 1 $optName-parameter supported");
         }
-        $configExt = HashSigBase::HASHSIG_FILE_EXT . '.json';
         $itsFile = \is_file($optValue);
         $itsDir  = \is_dir($optValue);
         $hashSigConfig = ($itsFile && (\substr($optValue, -\strlen($configExt)) === $configExt)) ? $optValue : null;
@@ -311,12 +320,11 @@ if (!$filePatterns) {
 // name calculation
 if (!\array_key_exists('name', $optionsArr) && !$hashSigName && $srcPath && \is_dir($srcPath)) {
     // name not specified in options, try search options in .hashsig.json files
-    $tail = HashSigBase::HASHSIG_FILE_EXT . '.json';
-    $mask = $srcPath . '/*' . $tail;
+    $mask = $srcPath . '/*' . $configExt;
     $namesArr = \glob($mask);
     foreach($namesArr as $n => $fullName) {
         $shortOptFile = \basename($fullName);
-        $namesArr[$n] = \substr($shortOptFile, 0, -\strlen($tail));
+        $namesArr[$n] = \substr($shortOptFile, 0, -\strlen($configExt));
     }
     if ($namesArr) {
         $cnt = \count($namesArr);
@@ -382,87 +390,88 @@ try {
                 }
             }
         }
-        if ($kobj) {
-            echo "My public key is: " . \base64_encode($kobj->pub_key) . "\n";
+    }    
+    if ($kobj) {
+        echo "My public key is: " . \base64_encode($kobj->pub_key) . "\n";
+    }
+    $hsObj = new HashSigCreater($kobj);
+    $hsObj->setDir($srcPath, $hashSigName);
+    if ($url) {
+        $writeMode = false;
+        $hashSigFileFull = $url;
+    } else {
+        $hashSigFileFull = $hsObj->hashSigFile;
+    }
+    if (!$checkMode && !$url && !\is_file($hsObj->hashSigFile)) {
+        $writeMode = true;
+    }
+    if (!$writeMode) {
+        if ($checkMode) {
+            echo "Checking: $hashSigFileFull\n";
         }
-        $hsObj = new HashSigCreater($kobj);
-        $hsObj->setDir($srcPath, $hashSigName);
-        if ($url) {
-            $writeMode = false;
-            $hashSigFileFull = $url;
+//            $chkHSobj = new HashSigBase();
+        $chkHSobj = $hsObj;
+        $doNotSaveFile = empty($targetPath) || $checkMode;
+        if ($doNotSaveFile) {
+            $targetPath = null;
         } else {
-            $hashSigFileFull = $hsObj->hashSigFile;
-        }
-        if (!$checkMode && !$url && !\is_file($hsObj->hashSigFile)) {
-            $writeMode = true;
-        }
-        if (!$writeMode) {
-            if ($checkMode) {
-                echo "Checking: $hashSigFileFull\n";
+            echo "Target path: $targetPath\n";
+            if (!\is_dir($targetPath) && !\mkdir($targetPath)) {
+                throw new Exception("Can't create target path=$targetPath");
             }
-            $chkHSobj = new HashSig($kobj);
-            $doNotSaveFile = empty($targetPath) || $checkMode;
+        }
+        $ret = $chkHSobj->getFilesByHashSig(
+            $hashSigFileFull,
+            $targetPath,
+            null,
+            $doNotSaveFile
+        );
+        $filesArr = [];
+        if (empty($ret['successArr'])) {
+            echo "No success results\n";
+        } else {
+            echo "Contains success results, public key=" . \base64_encode($chkHSobj->lastSuccessPubKeyHex) . "\n";
+            if ($kobj && $kobj->pub_key === $chkHSobj->lastSuccessPubKeyHex) {
+                echo " (it is my own pubkey)\n";
+            } else {
+                echo " !!! FOREING PUBLIC KEY !!!\n";
+            }
             if ($doNotSaveFile) {
-                $targetPath = null;
+                foreach($ret['successArr'] as $fileShortName => $fileData) {
+                    $filesArr[$hsObj->srcPath . '/' . $fileShortName] = [$fileShortName, \hash($hashAlgName, $fileData), \strlen($fileData)];
+                }
             } else {
-                echo "Target path: $targetPath\n";
-                if (!\is_dir($targetPath) && !\mkdir($targetPath)) {
-                    throw new Exception("Can't create target path=$targetPath");
+                foreach($ret['successArr'] as $fileShortName => $fileName) {
+                    $filesArr[$hsObj->srcPath . '/' . $fileShortName] = [$fileName, '', 1];
                 }
             }
-            $ret = $chkHSobj->getFilesByHashSig(
-                $hashSigFileFull,
-                $targetPath,
-                null,
-                $doNotSaveFile
-            );
-            $filesArr = [];
-            if (empty($ret['successArr'])) {
-                echo "No success results\n";
-            } else {
-                echo "Success result, public key=" . \base64_encode($chkHSobj->lastSuccessPubKeyHex) . "\n";
-                if ($kobj && $kobj->pub_key === $chkHSobj->lastSuccessPubKeyHex) {
-                    echo " (it is my own pubkey)\n";
-                } else {
-                    echo " !!! FOREING PUBLIC KEY !!!\n";
-                }
-                if ($doNotSaveFile) {
-                    foreach($ret['successArr'] as $fileShortName => $fileData) {
-                        $filesArr[$hsObj->srcPath . '/' . $fileShortName] = [$fileShortName, \hash($hashAlgName, $fileData), \strlen($fileData)];
-                    }
-                } else {
-                    foreach($ret['successArr'] as $fileShortName => $fileName) {
-                        $filesArr[$hsObj->srcPath . '/' . $fileShortName] = [$fileName, '', 1];
-                    }
-                }
-            }
-            if (!empty($ret['errorsArr'])) {
-                echo "Error results:\n";
-                print_r($ret['errorsArr']);
-            }
-            if (!empty($err['errMsgArr'])) {
-                echo "Error messages:\n";
-                print_r($ret['errMsgArr']);
-            }
-        } else {
-            echo "Write mode ON\n";
-            if (!empty($removeBefore) && \is_file($hashSigFileFull)) {
-                echo " Remove old: $hashSigFileFull ... ";
-                if (\unlink($hashSigFileFull)) {
-                    echo "Success \n";
-                } else {
-                    echo "ERROR \n";
-                }
-            }
-            $filesArr = $hsObj->makeIndexHashSignedZip(
-                $filePatterns,
-                $excludePatterns,
-                $maxFilesCnt,
-                $getHidden,
-                $maxSizeBytes,
-                $rewriteOptions
-            );
         }
+        if (!empty($ret['errorsArr'])) {
+            echo "Error results:\n";
+            print_r($ret['errorsArr']);
+        }
+        if (!empty($err['errMsgArr'])) {
+            echo "Error messages:\n";
+            print_r($ret['errMsgArr']);
+        }
+    } else {
+        echo "Write mode ON\n";
+        if (!empty($removeBefore) && \is_file($hashSigFileFull)) {
+            echo " Remove old: $hashSigFileFull ... ";
+            if (\unlink($hashSigFileFull)) {
+                echo "Success \n";
+            } else {
+                echo "ERROR \n";
+            }
+        }
+        $filesArr = $hsObj->makeIndexHashSignedZip(
+            $filePatterns,
+            $excludePatterns,
+            $maxFilesCnt,
+            $getHidden,
+            $maxSizeBytes,
+            $rewriteOptions
+        );
     }
 } catch (\Throwable $e) {
     $error = $e->getMessage();
