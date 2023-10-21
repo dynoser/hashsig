@@ -259,7 +259,8 @@ class HashSigBase {
         string $saveToDir = null,
         array $baseURLs = null,
         bool $doNotSaveFiles = false,
-        bool $doNotOverWrite = false
+        bool $doNotOverWrite = false,
+        bool $zipOnlyMode = false
     ) {
         if (\substr($hashSigFileFull, -4) === '.zip') {
             $zipMode = true;
@@ -269,6 +270,9 @@ class HashSigBase {
             }
             $hashSigFileFull = \substr($hashSigFileFull, 0, -4);
         } else {
+            if ($zipOnlyMode) {
+                throw new \Exception("Zip-only sources accepted");
+            }
             $zipMode = false;
         }
         
@@ -337,8 +341,8 @@ class HashSigBase {
             if (\is_null($fileData)) {
                 $errorsArr[] = $shortName;
             } else {
-                if (!$doNotSaveFiles) {
-                    $targetFileName = $saveToDir . '/' . $shortName;
+                $targetFileName = $saveToDir . '/' . $shortName;
+                if (!$doNotSaveFiles && $saveToDir) {
                     if (!$doNotOverWrite || !\is_file($targetFileName)) {
                         if (false !== \strpos($shortName, '/')) {
                             $toDir = \dirname($targetFileName);
@@ -351,7 +355,7 @@ class HashSigBase {
                     }
                 }
                 
-                $successArr[$shortName] = $fileData;
+                $successArr[$shortName] = $doNotSaveFiles ? $fileData : $targetFileName;
             }
         }
         
