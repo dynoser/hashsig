@@ -178,7 +178,7 @@ class HashSigCreater extends HashSigBase {
                 continue;
             }
 
-            $fileData = \file_get_contents($fullName);
+            $fileData = \is_file($fullName) ? \file_get_contents($fullName) : null;
             if (!\is_string($fileData)) {
                 continue;
             }
@@ -324,11 +324,7 @@ class HashSigCreater extends HashSigBase {
         }
 
         foreach($hashSignedArr as $fileFull => $hashLenStr) {
-            if (\file_exists($fileFull)) {
-                $content = \file_get_contents($fileFull);
-            } else {
-                $fileFull = null;
-            }
+            $content = \file_exists($fileFull) ? \file_get_contents($fileFull) : null;
             if (!\is_string($content)) {
                 $changedFilesArr[$fileFull] = false;
                 continue;
