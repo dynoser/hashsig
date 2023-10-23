@@ -28,7 +28,7 @@ $kopt = [
 ];
 
 // scan vendorDir
-$vendorDir = null;
+$vendorDir = \defined('VENDOR_DIR') ? \constant('VENDOR_DIR') : null;
 $myOwnDir = \strtr(__DIR__ , '\\', '/');
 $nextChkDir = $myOwnDir . '/vendor';
 do {
@@ -37,8 +37,16 @@ do {
         $vendorDir = $chkDir;
         break;
     }
-    $nextChkDir = \dirname($chkDir, 2) . '/vendor';
+    $nextChkDir = \rtrim(\dirname($chkDir, 2), '/\\') . '/vendor';
 } while (\strlen($nextChkDir) < \strlen($chkDir));
+
+// create vendor-dir if not found
+if (!$vendorDir) {
+    $vendorDir = $myOwnDir . '/vendor';
+    if (!\mkdir($vendorDir)) {
+        die ("Not found vendorDir and can't create '$vendorDir'");
+    }
+}
 
 // def local files search function
 $searchLocalFile = function($fileName, $vendorSubDir) use ($vendorDir, $myOwnDir) {
@@ -245,7 +253,8 @@ if (!empty($GLOBALS['argv'][1])) {
 
 $rewriteOptions = [];
 
-foreach($optionsArr as $optName => $optValue) {
+try {
+  foreach($optionsArr as $optName => $optValue) {
     switch($optName) {
     case 'url':
     case 'from':
@@ -256,6 +265,7 @@ foreach($optionsArr as $optName => $optValue) {
             throw new \Exception("Invalid url=$optValue");
         }
         break;
+    case 'frompath':
     case 'pathfrom':
         if (!\is_string($optValue)) {
             throw new \Exception("Only 1 $optName-parameter supported");
@@ -269,7 +279,11 @@ foreach($optionsArr as $optName => $optValue) {
             if (($itsFile || $itsDir) && !empty($optionsArr['autonamebypath'])) {
                 $hashSigConfig = $srcPath . '/temp' . $configExt;
             } else {
+                $maxStepUp = 3;
+                $currStep = 0;
                 while (\strrpos($srcPath, '/')) {
+                    WalkDir::$fileCountThreshold = 1000;
+                    WalkDir::$fileCountTotal = 0;
                     $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' . $configExt);
                     if (!empty($hashSigFilesArr)) {
                         echo "Found configurations:\n";
@@ -280,6 +294,12 @@ foreach($optionsArr as $optName => $optValue) {
                             }
                         }
                         break;
+                    }
+                    if (++$currStep > $maxStepUp) {
+                        echo "(Directory MaxStepUp=$maxStepUp limit reached)\n";
+                        break;
+                    } else {
+                        echo "(Step up from: $srcPath)\n";
                     }
                     $srcPath = \dirname($srcPath);
                 }
@@ -385,6 +405,10 @@ foreach($optionsArr as $optName => $optValue) {
     default:
         echo "Unknown option: $optName\n";
     }
+  }
+} catch (\Throwable $e) {
+    $error = $e->getMessage();
+    die("ERROR options: $error \n BREAK\n");
 }
 
 if (!$filePatterns) {
