@@ -134,6 +134,7 @@ if ($vendorDir) {
         $chkFile = $vendorDir . '/paragonie/sodium_compat/autoload.php';
         if (\is_file($chkFile)) {
             require_once $chkFile;
+            echo " (polyfill 'paragonie/sodium_compat' is used)\n";
         }
     }
 } else {
