@@ -171,7 +171,7 @@ if (!\class_exists('dynoser\\hashsig\\HashSigBase')) {
 }
 
 // seach all required files local
-$checkAndDown = function($tryDownload = true, $pkgInstallArr) use ($vendorDir, $searchLocalFile) {
+$checkAndDown = function($tryDownload, $pkgInstallArr) use ($vendorDir, $searchLocalFile) {
     $needDownload = [];
 
     foreach($pkgInstallArr as $fileName => $vendorArr) {
