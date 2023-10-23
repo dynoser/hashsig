@@ -8,7 +8,8 @@
             "args": [
                 "${workspaceFolder}/hashsig.php",
                 "--pathfrom=${file}",
-                "--write"
+                "--write",
+                "--nonsmap"
             ],
             "group": {
                 "kind": "build",
@@ -30,7 +31,8 @@
                 "${workspaceFolder}/hashsig.php",
                 "--pathfrom=${file}",
                 "--write",
-                "--autonamebypath"
+                "--autonamebypath",
+                "--nonsmap"
             ],
             "group": {
                 "kind": "build",
@@ -48,7 +50,8 @@
             "args": [
                 "${workspaceFolder}/hashsig.php",
                 "--pathfrom=${file}",
-                "--check"
+                "--check",
+                "--nonsmap"
             ],
             "group": {
                 "kind": "build",

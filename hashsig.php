@@ -30,134 +30,6 @@ $kopt = [
     'key' => \getenv('HASHSIG_KEYFILE')
 ];
 
-// scan vendorDir
-$vendorDir = \defined('VENDOR_DIR') ? \constant('VENDOR_DIR') : null;
-$myOwnDir = \strtr(__DIR__ , '\\', '/');
-$nextChkDir = $myOwnDir . '/vendor';
-do {
-    $chkDir = $nextChkDir;
-    if (\is_dir($chkDir)) {
-        $vendorDir = $chkDir;
-        break;
-    }
-    $nextChkDir = \rtrim(\dirname($chkDir, 2), '/\\') . '/vendor';
-} while (\strlen($nextChkDir) < \strlen($chkDir));
-
-// create vendor-dir if not found
-if (!$vendorDir) {
-    $vendorDir = $myOwnDir . '/vendor';
-    if (!\mkdir($vendorDir)) {
-        die ("Not found vendorDir and can't create '$vendorDir'");
-    }
-}
-
-// def local files search function
-$searchLocalFile = function($fileName, $vendorSubDir) use ($vendorDir, $myOwnDir) {
-    foreach([$myOwnDir, $vendorDir . $vendorSubDir] as $chkDir) {
-        $chkFile = $chkDir . $fileName;
-        if (\is_file($chkFile)) {
-            return $chkFile;
-        }
-    }
-};
-
-// HashSigBase class required local
-if (!\class_exists('dynoser\\hashsig\\HashSigBase')) {
-    $chkFile = $searchLocalFile("/src/HashSigBase.php", '/dynoser/hashsig/');
-    if ($chkFile) {
-        require_once $chkFile;
-    }
-    if (!\class_exists('dynoser\\hashsig\\HashSigBase')) {
-        throw new \Exception("Class dynoser\\hashsig\\HashSigBase required before all, can't countinue");        
-    }
-}
-
-// seach all required files local
-$checkAndDown = function($tryDownload = true) use ($vendorDir, $searchLocalFile) {
-    $needDownload = [];
-    foreach([
-        '/src/WalkDir.php' => ['/dynoser/walkdir', 'https://raw.githubusercontent.com/dynoser/WalkDir/main/src/walkdir.hashsig.zip', '/src'],
-        '/src/KeySigner.php' => ['/dynoser/keysigner', 'https://raw.githubusercontent.com/dynoser/keysigner/main/src/keysigner.hashsig.zip', '/src'],
-        '/src/HashSigCreater.php' => ['/dynoser/hashsig', 'https://raw.githubusercontent.com/dynoser/hashsig/main/hashsig.hashsig.zip', ''],
-    ] as $fileName => $vendorArr) {
-        $chkFile = $searchLocalFile($fileName, $vendorArr[0]);
-        if (!$chkFile) {
-            $needDownload[$fileName] = $vendorArr;
-        }
-    }
-
-    if ($needDownload && $vendorDir && $tryDownload) {
-        foreach($needDownload as $fileName => $vendorArr) {
-            $hsObj = new HashSigBase();
-            $res = $hsObj->getFilesByHashSig(
-                $vendorArr[1],
-                $vendorDir . $vendorArr[0] . $vendorArr[2], //$saveToDir
-                null,  // $baseURLs
-                false, // $doNotSaveFiles
-                true,  // $doNotOverWrite
-                true   // $zipOnlyMode
-            );
-        }
-    }
-    return $needDownload;
-};
-
-if ($checkAndDown()) {
-    $needDownload = $checkAndDown(false);
-    if ($needDownload) {
-        echo "Not found and can't download it:";
-        print_r($needDownload);
-    }
-}
-
-$scanClassFileFn = function ($classFullName) use ($myOwnDir, $vendorDir) {
-    static $nameSpacesArr = [];
-    if (!$nameSpacesArr) {
-        $nameSpacesArr = [
-            'dynoser\\hashsig\\' => $myOwnDir . '/src/',
-            'dynoser\\keysigner\\' => $vendorDir . '/dynoser/keysigner/src/',
-            'dynoser\\walkdir\\' => $vendorDir . '/dynoser/walkdir/src/',
-        ];
-    }
-    foreach($nameSpacesArr as $nameSpacePrefix => $srcDir) {
-        if (\strncmp($nameSpacePrefix, $classFullName, \strlen($nameSpacePrefix)) !== 0) {
-            continue;
-        }
-        $relativeClass = \substr($classFullName, \strlen($nameSpacePrefix));
-        $file = $srcDir . \strtr($relativeClass, '\\', '/') . '.php';
-        if (\file_exists($file)) {
-            return $file;
-        }
-    }
-};
-
-if (!\class_exists('dynoser\\autoload\\AutoLoadSetup', false)) {
-    if (empty($optionsArr['vendorautoload'])) {
-        // set own autoloader for own classes
-        \spl_autoload_register(function ($classFullName) use ($scanClassFileFn) {
-            $file = $scanClassFileFn($classFullName);
-            if ($file) {
-                require_once $file;
-            }
-        });
-    } else {
-        if (!\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
-            foreach([
-                \dirname($myOwnDir, 2) . '/vendor',
-                $myOwnDir . '/vendor',
-                $vendorDir,
-            ] as $chkDir) {
-                $chkFile = \trim($chkDir, '\\/') . '/autoload.php';
-                if (\is_file($chkFile)) {
-                    include_once $chkFile;
-                    break;
-                }
-            }
-        }
-    }
-}
-
-
 // get options from command string (or from get-parameters)
 $optionsArr = (function() {
     $optionsArr = [];
@@ -220,6 +92,168 @@ $optionsArr = (function() {
     }
     return $optionsArr;
 })();
+
+// scan vendorDir
+$vendorDir = \defined('VENDOR_DIR') ? \constant('VENDOR_DIR') : null;
+$myOwnDir = \strtr(__DIR__ , '\\', '/');
+$nextChkDir = $myOwnDir . '/vendor';
+do {
+    $chkDir = $nextChkDir;
+    if (\is_dir($chkDir)) {
+        $vendorDir = $chkDir;
+        break;
+    }
+    $nextChkDir = \rtrim(\dirname($chkDir, 2), '/\\') . '/vendor';
+} while (\strlen($nextChkDir) < \strlen($chkDir));
+
+// create vendor-dir if not found
+if (!$vendorDir) {
+    $vendorDir = $myOwnDir . '/vendor';
+    if (!\mkdir($vendorDir)) {
+        die ("Not found vendorDir and can't create '$vendorDir'");
+    }
+}
+
+// def local files search function
+$searchLocalFile = function($fileName, $vendorSubDir) use ($vendorDir, $myOwnDir) {
+    foreach([$myOwnDir, $vendorDir . $vendorSubDir] as $chkDir) {
+        $chkFile = $chkDir . $fileName;
+        if (\is_file($chkFile)) {
+            return $chkFile;
+        }
+    }
+};
+
+// HashSigBase class required local
+$hashSigBase = '/src/HashSigBase.php';
+if (!\class_exists('dynoser\\hashsig\\HashSigBase')) {
+    $chkFile = $searchLocalFile($hashSigBase, '/dynoser/hashsig/');
+    if ($chkFile) {
+        require_once $chkFile;
+    }
+    if (!\class_exists('dynoser\\hashsig\\HashSigBase')) {
+        $chkDir = $myOwnDir . "/src";
+        if (\is_dir($chkDir) || \mkdir($chkDir)) {
+            $chkFile = $myOwnDir . $hashSigBase;
+            $hashSigBaseURL = "https://raw.githubusercontent.com/dynoser/hashsig/main/src/HashSigBase.php";
+            echo "Try auto-create $chkFile \n Download from: $hashSigBaseURL \n";
+            if (copy($hashSigBaseURL, $chkFile)) {
+                require_once $chkFile;
+            }
+        }
+        if (!\class_exists('dynoser\\hashsig\\HashSigBase')) {
+            throw new \Exception("Class dynoser\\hashsig\\HashSigBase required before all, can't countinue");
+        }
+    }
+}
+
+// seach all required files local
+$checkAndDown = function($tryDownload = true, $pkgInstallArr) use ($vendorDir, $searchLocalFile) {
+    $needDownload = [];
+
+    foreach($pkgInstallArr as $fileName => $vendorArr) {
+        $chkFile = $searchLocalFile($fileName, $vendorArr[0]);
+        if (!$chkFile) {
+            $needDownload[$fileName] = $vendorArr;
+        }
+    }
+
+    if ($needDownload && $vendorDir && $tryDownload) {
+        foreach($needDownload as $fileName => $vendorArr) {
+            $hsObj = new HashSigBase();
+            $res = $hsObj->getFilesByHashSig(
+                $vendorArr[1],
+                $vendorDir . $vendorArr[0] . $vendorArr[2], //$saveToDir
+                null,  // $baseURLs
+                false, // $doNotSaveFiles
+                true,  // $doNotOverWrite
+                true   // $zipOnlyMode
+            );
+        }
+    }
+    return $needDownload;
+};
+
+$ownHSCreaterFile = $myOwnDir . '/src/HashSigCreater.php';
+$ownHSCreaterFile = \is_file($ownHSCreaterFile) ? $ownHSCreaterFile : '';
+if ($ownHSCreaterFile && !\class_exists('dynoser\\hashsig\\HashSigCreater', false)) {
+    echo " (Using $ownHSCreaterFile)\n";
+    require_once $ownHSCreaterFile;
+}
+
+$pkgInstallArr = [
+    '/src/WalkDir.php' => ['/dynoser/walkdir', 'https://raw.githubusercontent.com/dynoser/WalkDir/main/src/walkdir.hashsig.zip', '/src'],
+    '/src/KeySigner.php' => ['/dynoser/keysigner', 'https://raw.githubusercontent.com/dynoser/keysigner/main/src/keysigner.hashsig.zip', '/src'],
+];
+if (!$ownHSCreaterFile) {
+    $pkgInstallArr += [
+    '/src/HashSigCreater.php' => ['/dynoser/hashsig', 'https://raw.githubusercontent.com/dynoser/hashsig/main/hashsig.hashsig.zip', ''],
+    '/src/AutoLoader.php' => ['/dynoser/autoload', 'https://raw.githubusercontent.com/dynoser/autoload/main/autoload.hashsig.zip', ''],
+    ];
+}
+
+if ($checkAndDown(true, $pkgInstallArr)) {
+    $needDownload = $checkAndDown(false, $pkgInstallArr);
+    if ($needDownload) {
+        echo "Not found and can't download it:";
+        print_r($needDownload);
+    }
+}
+
+$scanClassFileFn = function ($classFullName) use ($myOwnDir, $vendorDir) {
+    static $nameSpacesArr = [];
+    if (!$nameSpacesArr) {
+        $nameSpacesArr = [
+            'dynoser\\hashsig\\' => $myOwnDir . '/src/',
+            'dynoser\\keysigner\\' => $vendorDir . '/dynoser/keysigner/src/',
+            'dynoser\\walkdir\\' => $vendorDir . '/dynoser/walkdir/src/',
+        ];
+    }
+    foreach($nameSpacesArr as $nameSpacePrefix => $srcDir) {
+        if (\strncmp($nameSpacePrefix, $classFullName, \strlen($nameSpacePrefix)) !== 0) {
+            continue;
+        }
+        $relativeClass = \substr($classFullName, \strlen($nameSpacePrefix));
+        $file = $srcDir . \strtr($relativeClass, '\\', '/') . '.php';
+        if (\file_exists($file)) {
+            return $file;
+        }
+    }
+};
+
+if (!\class_exists('dynoser\\autoload\\AutoLoadSetup', false)) {
+    if (!\defined('DYNO_NSMAP_URL') && empty($optionsArr['nonsmap'])) {
+        define('DYNO_NSMAP_URL', 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip');
+        if (!\defined('DYNO_NSMAP_TIMEOUT')) {
+            define('DYNO_NSMAP_TIMEOUT', 60);
+        }
+    }
+    if (!\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
+        foreach(['/dynoser/autoload', ''] as $appendPath) {
+            foreach([
+                \dirname($myOwnDir, 2) . '/vendor' . $appendPath,
+                $myOwnDir . '/vendor' . $appendPath,
+                $vendorDir . $appendPath,
+            ] as $chkDir) {
+                $chkFile = \trim($chkDir, '\\/') . '/autoload.php';
+                if (\is_file($chkFile)) {
+                    include_once $chkFile;
+                    break 2;
+                }
+            }
+        }
+    }
+    if (!\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
+            \spl_autoload_register(function ($classFullName) use ($scanClassFileFn) {
+            $file = $scanClassFileFn($classFullName);
+            if ($file) {
+                require_once $file;
+            }
+        });
+    }
+}
+
+
 
 
 $configExt = HashSigBase::HASHSIG_FILE_EXT . '.json';
