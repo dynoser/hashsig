@@ -229,10 +229,13 @@ $scanClassFileFn = function ($classFullName) use ($myOwnDir, $vendorDir) {
 
 if (!\class_exists('dynoser\\autoload\\AutoLoadSetup', false)) {
     if (!\defined('DYNO_NSMAP_URL') && empty($optionsArr['nonsmap'])) {
-        define('DYNO_NSMAP_URL', 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip');
+        $nsMapUrl = $optionsArr['nsmap'] ?? 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip';
+        define('DYNO_NSMAP_URL', $nsMapUrl);
         if (!\defined('DYNO_NSMAP_TIMEOUT')) {
-            define('DYNO_NSMAP_TIMEOUT', 60);
+            $nsMapTimeOut = $optionsArr['nsmaptimeout'] ?? 60;
+            define('DYNO_NSMAP_TIMEOUT', $nsMapTimeOut);
         }
+        echo ' (Using nsmap="' . \DYNO_NSMAP_URL . '" timeout=' . \DYNO_NSMAP_TIMEOUT . ")\n";
     }
     if (!\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
         foreach(['/dynoser/autoload', ''] as $appendPath) {
