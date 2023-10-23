@@ -184,7 +184,7 @@ class HashSigBase {
             if (!$signIsOk) {
                 throw new \Exception("Invalid signature");
             }
-            $this->lastSuccessPubKeyHex = $keyPubBin;
+            $this->lastSuccessPubKeyBin = $keyPubBin;
             if ($this->trustKeysObj && !$this->isTrusted($keyPubBin)) {
                 throw new \Exception("Package signature is OK, but public key not trusted: " . $keyPubB64);
             }
