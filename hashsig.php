@@ -5,6 +5,9 @@ use dynoser\hashsig\HashSigBase;
 use dynoser\hashsig\HashSigCreater;
 use dynoser\walkdir\WalkDir;
 
+use dynoser\autoload\AutoLoader;
+
+
 $myOwnVersion = '1.0.3';
 $myOwnName = "HashSig package manager version $myOwnVersion";
 
@@ -188,10 +191,13 @@ $pkgInstallArr = [
 if (!$ownHSCreaterFile) {
     $pkgInstallArr += [
     '/src/HashSigCreater.php' => ['/dynoser/hashsig', 'https://raw.githubusercontent.com/dynoser/hashsig/main/hashsig.hashsig.zip', ''],
+    ];
+}
+if (!$ownHSCreaterFile || !empty($optionsArr['install'])) {
+    $pkgInstallArr += [
     '/src/AutoLoader.php' => ['/dynoser/autoload', 'https://raw.githubusercontent.com/dynoser/autoload/main/autoload.hashsig.zip', ''],
     ];
 }
-
 if ($checkAndDown(true, $pkgInstallArr)) {
     $needDownload = $checkAndDown(false, $pkgInstallArr);
     if ($needDownload) {
@@ -253,7 +259,41 @@ if (!\class_exists('dynoser\\autoload\\AutoLoadSetup', false)) {
     }
 }
 
+if (!empty($optionsArr['install'])) {
+    $className = $optionsArr['install'];
+    if (true === $className && !empty($GLOBALS['argv'][1])) {
+        $className = $GLOBALS['argv'][1];
+    }
+    if (!$className) {
+        die("Not specified class-name for --install\n");
+    }
+    if (\is_string($className)) {
+        $classInstArr = [$className];
+    } elseif(\is_array($className)) {
+        $classInstArr = $className;
+    } else {
+        die("Unsupported --install option type\n");
+    }
+    foreach($classInstArr as $className) {
+        $classFullName = \trim(\strtr($className, '/', '\\'), '\\ ');
 
+        echo "Try install class: '$classFullName' ... ";
+    
+        try {
+            $res = AutoLoader::autoLoad($classFullName, false);
+            if ($res) {
+                echo "OK\n";
+            } else {
+                echo "Not found\n";
+            }
+
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+            echo "\\Exception: $error \n";
+        }
+    }
+    die("stop");
+}
 
 
 $configExt = HashSigBase::HASHSIG_FILE_EXT . '.json';
