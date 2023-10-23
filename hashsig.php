@@ -5,6 +5,9 @@ use dynoser\hashsig\HashSigBase;
 use dynoser\hashsig\HashSigCreater;
 use dynoser\walkdir\WalkDir;
 
+$myOwnVersion = '1.0.3';
+$myOwnName = "HashSig package manager version $myOwnVersion";
+
 // default parameters for scan files:
 $srcPath = \getcwd();
 $hashSigName = '';
@@ -250,12 +253,64 @@ if (!empty($GLOBALS['argv'][1])) {
     }
 }
 
+if (empty($optionsArr) || !empty($optionsArr['help']) || !empty($optionsArr['h'])) {
+    echo <<<VIEWHELP
+     $myOwnName
+    ----------------------------------------
+     call:
+    php hashsig.php <url or dir> [options]
+    ----------------------------------------
+    options:
+     [download and verify]
+    1) you must specify the source:
+      --path=path/to/package    - path to the package being checked
+      OR
+      --url=url/to/checking
+    2) if you whant checking package only:
+      --check                   - set check option to prevent write-mode
+    3) if you whant to unpack package, need specified target directory:
+      --target=path/to
+    ----------------------------------------
+     [write mode]    -- to sign packages you must have a key installed (see below)
+      --write                   - set write option to activate write-mode
+      --path=path/to/package    - path to the package to be hashed-signed and packaged
+      OR
+      --pathfrom=path/to/file   - path to one of file in the package
+    ----------------------------------------
+     [names]
+      --name  - specified name of package, for ex. --name=test will create "test.hashsig.zip"
+      --autonamebypath  - automatic calc name based on the name of the last folder (except "src")
+      --pathfrom - when this option used for an existing package, the existing name will be taken
+    ----------------------------------------
+      [KEY]
+      --key=path/to/file        - path to the key file
+      --gengen                  - generate a new key
+      --keyrewrite              - overwrite key file if it exist
+      --password=your-password  - (optional) password for encrypt/dectypt key file
+      You may set environment:
+        HASHSIG_KEYFILE         - the same as --key
+        HASHSIG_PASSWORD        - the same as --password  (optional)
+    ----------------------------------------
+      [file scanning]
+      --pattern=*.php           - mask for searching for files included in a package
+      --exclude=/index.php      - exclude files and folders (dont add to package)
+        Several options --pattern=... and --exclude=... can be specified
+      --maxsize=number          - maximum size of files included in the package (bytes)
+      --maxfiles=number         - maximum number of files included in a package
+      After the package is created, the search options are saved in file <name>.hashsig.json
+      Нou can edit the options in the file <name>.hashsig.json and run the packaging again.
+    VIEWHELP;
+    die;
+}
 
 $rewriteOptions = [];
 
 try {
   foreach($optionsArr as $optName => $optValue) {
     switch($optName) {
+    case 'version':
+    case 'v':
+        die($myOwnName);
     case 'url':
     case 'from':
     case 'fromurl':
