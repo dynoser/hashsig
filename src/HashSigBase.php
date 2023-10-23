@@ -291,7 +291,7 @@ class HashSigBase {
         
         // check-prepare saveToDir
         $chkSaveToDir = $saveToDir ? $saveToDir : $this->srcPath;
-        if (!$doNotSaveFiles && !\is_dir($chkSaveToDir) && !\mkdir($chkSaveToDir)) {
+        if (!$doNotSaveFiles && !\is_dir($chkSaveToDir) && !\mkdir($chkSaveToDir, 0777, true)) {
             throw new \Exception("Not found and can't create target dir: $chkSaveToDir");
         }
         if ($saveToDir) {
