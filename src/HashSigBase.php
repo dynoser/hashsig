@@ -178,7 +178,7 @@ class HashSigBase {
             } elseif (\function_exists('sodium_crypto_sign_verify_detached')) {
                 $signIsOk = \sodium_crypto_sign_verify_detached($signatureBin, $hashHex, $keyPubBin);
             } else {
-                throw new \Exception("No signature verification method");
+                throw new \Exception("No signature verification method. Enable sodium php-ext. or use polyfill 'composer require paragonie/sodium_compat'");
             }
             
             if (!$signIsOk) {
