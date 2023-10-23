@@ -96,6 +96,17 @@ $optionsArr = (function() {
     return $optionsArr;
 })();
 
+// nsmap options
+if (!\defined('DYNO_NSMAP_URL') && empty($optionsArr['nonsmap'])) {
+    $nsMapUrl = $optionsArr['nsmap'] ?? 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip';
+    define('DYNO_NSMAP_URL', $nsMapUrl);
+    if (!\defined('DYNO_NSMAP_TIMEOUT')) {
+        $nsMapTimeOut = $optionsArr['nsmaptimeout'] ?? 60;
+        define('DYNO_NSMAP_TIMEOUT', $nsMapTimeOut);
+    }
+    echo ' (Using nsmap="' . \DYNO_NSMAP_URL . '" timeout=' . \DYNO_NSMAP_TIMEOUT . ")\n";
+}
+
 // scan vendorDir
 $vendorDir = \defined('VENDOR_DIR') ? \constant('VENDOR_DIR') : null;
 $myOwnDir = \strtr(__DIR__ , '\\', '/');
@@ -109,8 +120,17 @@ do {
     $nextChkDir = \rtrim(\dirname($chkDir, 2), '/\\') . '/vendor';
 } while (\strlen($nextChkDir) < \strlen($chkDir));
 
-// create vendor-dir if not found
-if (!$vendorDir) {
+if ($vendorDir) {
+    // use vendor autoload if need
+    if (!empty($optionsArr['a'])) {
+        $chkFile = $vendorDir . '/autoload.php';
+        if (\is_file($chkFile)) {
+            echo " (Using autoloader=$chkFile )\n";
+            require_once $chkFile;
+        }
+    }
+} else {
+    // create vendor-dir if not found
     $vendorDir = $myOwnDir . '/vendor';
     if (!\mkdir($vendorDir)) {
         die ("Not found vendorDir and can't create '$vendorDir'");
@@ -228,15 +248,6 @@ $scanClassFileFn = function ($classFullName) use ($myOwnDir, $vendorDir) {
 };
 
 if (!\class_exists('dynoser\\autoload\\AutoLoadSetup', false)) {
-    if (!\defined('DYNO_NSMAP_URL') && empty($optionsArr['nonsmap'])) {
-        $nsMapUrl = $optionsArr['nsmap'] ?? 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip';
-        define('DYNO_NSMAP_URL', $nsMapUrl);
-        if (!\defined('DYNO_NSMAP_TIMEOUT')) {
-            $nsMapTimeOut = $optionsArr['nsmaptimeout'] ?? 60;
-            define('DYNO_NSMAP_TIMEOUT', $nsMapTimeOut);
-        }
-        echo ' (Using nsmap="' . \DYNO_NSMAP_URL . '" timeout=' . \DYNO_NSMAP_TIMEOUT . ")\n";
-    }
     if (!\class_exists('dynoser\\autoload\\AutoLoadSetup')) {
         foreach(['/dynoser/autoload', ''] as $appendPath) {
             foreach([
