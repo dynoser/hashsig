@@ -426,9 +426,10 @@ try {
         $hashSigConfig = ($itsFile && (\substr($optValue, -\strlen($configExt)) === $configExt)) ? $optValue : null;
         $optValue = $itsDir ? $optValue : \dirname($optValue);
         $srcPath = \strtr($optValue, '\\', '/');
+        $scanMask = $configExt;
         if (!$hashSigConfig) {
             if (($itsFile || $itsDir) && !empty($optionsArr['autonamebypath'])) {
-                $hashSigConfig = $srcPath . '/temp' . $configExt;
+                $hashSigConfig = $srcPath . '/temp' . $scanMask;
             } else {
                 $maxStepUp = 3;
                 $currStep = 0;
@@ -436,10 +437,11 @@ try {
                     // scan config files by mask *.hashsig.json
                     WalkDir::$fileCountThreshold = 200;
                     WalkDir::$fileCountTotal = 0;
-                    $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' . $configExt);
+                    $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' . $scanMask);
                     if (empty($hashSigFilesArr)) {
                         // scan *.hashsig.zip files
-                        $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' .  HashSigBase::HASHSIG_FILE_EXT . '.zip');
+                        $scanMask = HashSigBase::HASHSIG_FILE_EXT . '.zip';
+                        $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' .  $scanMask);
                     }
                     if (!empty($hashSigFilesArr)) {
                         echo "Found:\n";
@@ -464,7 +466,7 @@ try {
         if (!$hashSigConfig) {
             throw new \Exception("Can't autodetect srcPath by pathfrom=$optValue");
         }
-        $hashSigName = \substr(\basename($hashSigConfig), 0, -\strlen($configExt));
+        $hashSigName = \substr(\basename($hashSigConfig), 0, -\strlen($scanMask));
         $optValue = \dirname($hashSigConfig);
     case 'path':
     case 'srcpath':
@@ -667,7 +669,6 @@ try {
         if ($checkMode) {
             echo "Checking: $hashSigFileFull\n";
         }
-//            $chkHSobj = new HashSigBase();
         $chkHSobj = $hsObj;
         $doNotSaveFile = empty($targetPath) || $checkMode;
         if ($doNotSaveFile) {
