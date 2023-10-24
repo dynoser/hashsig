@@ -139,15 +139,21 @@ class HashSigCreater extends HashSigBase {
         WalkDir::$fileCountTotal = 0;
         WalkDir::$fileCountThreshold = $maxFilesCnt;
 
+        WalkDir::$getNamesSumTotal = 0;
+        WalkDir::$getNamesSumThreshold = $maxFilesCnt * 50;
+
         $filesArr = WalkDir::getFilesArr(
             $srcPath,
-            false,// $setKeys
+            false,
             $filePatterns,
             $excludePatterns,
             $getHidden,
             true,
             $maxDepth
         );
+
+        WalkDir::$fileCountThreshold = 0;
+        WalkDir::$getNamesSumThreshold = 0;
         
         return self::resovleFileHashes($srcPath, $filesArr, $hashAlgName, $maxSizeBytes, $maxFilesCnt);
     }
