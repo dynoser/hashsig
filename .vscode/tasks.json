@@ -36,9 +36,9 @@
             "args": [
                 "-d", "xdebug.mode=off",
                 "${workspaceFolder}/hashsig.php",
+                "--autonamebypath",
                 "--pathfrom=${file}",
                 "--reindex",
-                "--autonamebypath",
                 "--nonsmap"
             ],
             "group": {
