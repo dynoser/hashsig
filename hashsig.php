@@ -690,8 +690,9 @@ try {
             echo "No success results\n";
         } else {
             $pkgKeyBin = $chkHSobj->lastSuccessPubKeyBin;
-            echo "Contains success results, public key=" . \base64_encode($pkgKeyBin) . "\n";
-            echo ($kobj && $kobj->pub_key === \bin2hex($pkgKeyBin)) ? " (it is my own pubkey)\n" : " !!! FOREING PUBLIC KEY !!!\n";
+            $pkgKeyB64 = \base64_encode($pkgKeyBin);
+            echo "Contains success results, public key=" . $pkgKeyB64 . "\n";
+            echo ($kobj && $kobj->pub_key === $pkgKeyB64) ? " (it is my own pubkey)\n" : " !!! FOREING PUBLIC KEY !!!\n";
 
             if ($doNotSaveFile) {
                 foreach($ret['successArr'] as $fileShortName => $fileData) {
