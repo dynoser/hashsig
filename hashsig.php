@@ -552,6 +552,7 @@ try {
         $kopt['keyrewrite'] = !empty($optValue);
         break;
     case 'rewrite':
+    case 'reindex':
         $removeBefore = true;
     case 'write':
         $writeMode = empty($checkMode) && empty($optionsArr['check']) && !empty($optValue);
