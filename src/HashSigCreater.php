@@ -475,6 +475,10 @@ class HashSigCreater extends HashSigBase {
             if (\array_key_exists($exportName, $jsonDataArr)) {
                 $optionValue = $jsonDataArr[$exportName];
                 $optionType = \gettype($optionValue);
+                if ($optionType === 'string' && $expectedType === 'integer' && \is_numeric($optionValue)) {
+                    $optionValue = (int)$optionValue;
+                    $optionType = $expectedType;
+                }
                 if (!$expectedType || false !== \strpos($expectedType, $optionType)) {
                     $optionsArr[$exportName] = $optionValue;
                 }
