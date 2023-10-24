@@ -2,10 +2,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run HashSig (CTRL+SHIFT+B)",
+            "label": "Build HashSig (CTRL+SHIFT+B)",
             "type": "shell",
             "command": "php",
             "args": [
+                "-d", "xdebug.mode=off",
                 "${workspaceFolder}/hashsig.php",
                 "--pathfrom=${file}",
                 "--write",
@@ -21,16 +22,22 @@
             "problemMatcher": [],
             "runOptions": {
                 "runOn": "default"
+            },
+            "options": {
+                "env": {
+                    "XDEBUG_CONFIG": "xdebug.remote_enable=0"
+                }
             }
         },
         {
-            "label": "Create HashSig",
+            "label": "Create HashSig (or reindex)",
             "type": "shell",
             "command": "php",
             "args": [
+                "-d", "xdebug.mode=off",
                 "${workspaceFolder}/hashsig.php",
                 "--pathfrom=${file}",
-                "--write",
+                "--reindex",
                 "--autonamebypath",
                 "--nonsmap"
             ],
@@ -44,10 +51,11 @@
             "problemMatcher": []
         },
         {
-            "label": "Verify HashSig",
+            "label": "Verify HashSig package",
             "type": "shell",
             "command": "php",
             "args": [
+                "-d", "xdebug.mode=off",
                 "${workspaceFolder}/hashsig.php",
                 "--pathfrom=${file}",
                 "--check",
