@@ -681,7 +681,7 @@ try {
         } else {
             echo "Target path: $targetPath\n";
             if (!\is_dir($targetPath) && !\mkdir($targetPath)) {
-                throw new Exception("Can't create target path=$targetPath");
+                throw new \Exception("Can't create target path=$targetPath");
             }
         }
         $ret = $chkHSobj->getFilesByHashSig(
@@ -758,6 +758,8 @@ if (\is_array($filesArr)) {
         echo "Total $filesCnt files\n";
         if (WalkDir::$fileCountThreshold && (WalkDir::$fileCountTotal > WalkDir::$fileCountThreshold)) {
             echo "--- BROKEN BY MAXFILES: " . WalkDir::$fileCountThreshold . " ---\n";
+        } elseif (WalkDir::$getNamesSumThreshold && (WalkDir::$getNamesSumTotal > WalkDir::$getNamesSumThreshold)) {
+            echo "--- BROKEN BY MAX-GET-NAMES: " . WalkDir::$getNamesSumThreshold . " ---\n";
         }
         if ($writeMode) {
             $zipFile = $hashSigFileFull . '.zip';
