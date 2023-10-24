@@ -692,7 +692,7 @@ try {
             $pkgKeyBin = $chkHSobj->lastSuccessPubKeyBin;
             $pkgKeyB64 = \base64_encode($pkgKeyBin);
             echo "Contains success results, public key=" . $pkgKeyB64 . "\n";
-            echo ($kobj && $kobj->pub_key === $pkgKeyB64) ? " (it is my own pubkey)\n" : " !!! FOREING PUBLIC KEY !!!\n";
+            echo ($kobj && $kobj->pub_key === $pkgKeyBin) ? " (it is my own pubkey)\n" : " !!! FOREING PUBLIC KEY !!!\n";
 
             if ($doNotSaveFile) {
                 foreach($ret['successArr'] as $fileShortName => $fileData) {
