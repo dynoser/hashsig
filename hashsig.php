@@ -505,12 +505,14 @@ try {
         }
         $rewriteOptions['excludePatterns'] = $excludePatterns;
         break;
+    case 'pat':
     case 'pattern':
         $filePatterns[] = $optValue;
         $rewriteOptions['filePatterns'] = $filePatterns;
         break;
     case 'maxfiles':
-        $maxFilesCnt = $optValue;
+    case 'maxfilescnt':
+            $maxFilesCnt = $optValue;
         $rewriteOptions['maxFilesCnt'] = $maxFilesCnt;
         break;
     case 'maxsize':
@@ -539,8 +541,10 @@ try {
         break;
     case 'keygen':
     case 'genkey':
+    case 'gen':
         $kopt['genkey'] = $optValue;
         break;
+    case 'pass':
     case 'password':
         $kopt['password'] = $optValue;
         break;
@@ -614,8 +618,7 @@ try {
             if ($isFile) {
                 $keystr = \file_get_contents($keyORfile);
             } else {
-                throw new \Exception("Key must be in file\n");
-                //$keystr = $keyORfile;
+                throw new \Exception("Key must be in file. May use .ppk keys (ed25519 only)\n");
             }
             $kobj = new \dynoser\keysigner\KeySigner($keystr, $password);
         } else {
@@ -636,7 +639,7 @@ try {
             $kobj = new \dynoser\keysigner\KeySigner();
             $kobj->init();
             $keystr = $kobj->dumpKeyPair($password, false, false);
-            echo "Private key: $keystr \n";
+            //echo "Private key: $keystr \n";
             if ($fileForKeySave) {
                 $wb = \file_put_contents($fileForKeySave, $keystr);
                 if (!$wb) {
@@ -644,10 +647,11 @@ try {
                 }
                 echo "Key saved to file: $fileForKeySave \n";
                 if ($password) {
-                    echo "(Encrypted by specified passrwod, --password option required to use this file)\n";
+                    echo "(Encrypted by specified passrwod, --password=\"$password\" option required to use this file)\n";
                 } else {
                     echo "(Not encrypted, no password required to use this key-file)\n";
                 }
+                die("Complete. Use option --key=$fileForKeySave\n");
             }
         }
     }    
