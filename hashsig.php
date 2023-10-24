@@ -433,15 +433,20 @@ try {
                 $maxStepUp = 3;
                 $currStep = 0;
                 while (\strrpos($srcPath, '/')) {
-                    WalkDir::$fileCountThreshold = 1000;
+                    // scan config files by mask *.hashsig.json
+                    WalkDir::$fileCountThreshold = 200;
                     WalkDir::$fileCountTotal = 0;
                     $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' . $configExt);
+                    if (empty($hashSigFilesArr)) {
+                        // scan *.hashsig.zip files
+                        $hashSigFilesArr = WalkDir::getFilesArr($srcPath, false, '*' .  HashSigBase::HASHSIG_FILE_EXT . '.zip');
+                    }
                     if (!empty($hashSigFilesArr)) {
-                        echo "Found configurations:\n";
+                        echo "Found:\n";
                         foreach($hashSigFilesArr as $n => $hashSigConfig) {
                             echo " $hashSigConfig\n";
-                            if ($n && empty($optionsArr['getfirstconfig'])) {
-                                throw new \Exception("You may use option --getfirstconfig");
+                            if ($n && empty($optionsArr['getfirst'])) {
+                                throw new \Exception("You may use option --getfirst");
                             }
                         }
                         break;
@@ -552,6 +557,10 @@ try {
     case 'hash':
     case 'hashalg':
         $hashAlgName = $optValue;
+        break;
+    case 'a':
+    case 'nonsmap':
+    case 'getfirst':
         break;
     default:
         echo "Unknown option: $optName\n";
@@ -680,11 +689,9 @@ try {
             echo "No success results\n";
         } else {
             echo "Contains success results, public key=" . \base64_encode($chkHSobj->lastSuccessPubKeyHex) . "\n";
-            if ($kobj && $kobj->pub_key === $chkHSobj->lastSuccessPubKeyHex) {
-                echo " (it is my own pubkey)\n";
-            } else {
-                echo " !!! FOREING PUBLIC KEY !!!\n";
-            }
+            $pkgKeyHex = \bin2hex($chkHSobj->lastSuccessPubKeyBin);
+            echo ($kobj && $kobj->pub_key === $pkgKeyHex) ? " (it is my own pubkey)\n" : " !!! FOREING PUBLIC KEY !!!\n";
+
             if ($doNotSaveFile) {
                 foreach($ret['successArr'] as $fileShortName => $fileData) {
                     $filesArr[$hsObj->srcPath . '/' . $fileShortName] = [$fileShortName, \hash($hashAlgName, $fileData), \strlen($fileData)];
