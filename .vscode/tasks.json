@@ -22,11 +22,6 @@
             "problemMatcher": [],
             "runOptions": {
                 "runOn": "default"
-            },
-            "options": {
-                "env": {
-                    "XDEBUG_CONFIG": "xdebug.remote_enable=0"
-                }
             }
         },
         {
@@ -70,5 +65,11 @@
             },
             "problemMatcher": []
         }
-    ]
+    ],
+    "options": {
+        "env": {
+            "HASHSIG_KEYFILE": "${env:HASHSIG_KEYFILE}",
+            "HASHSIG_PASSWORD": "${env:HASHSIG_PASSWORD}"
+        }
+    }
 }
