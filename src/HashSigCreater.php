@@ -214,7 +214,7 @@ class HashSigCreater extends HashSigBase {
     
     public function makeHashSignedStr(array $filesHashLenArr): string {
         if (!$this->canSign) {
-            throw new \Exception("KeySignerObj->can_sign=true required");
+            throw new \Exception("Key file is required (option --key=path/to/file).\n You can use the .ppk format or generate keys using the --genkey option.");
         }
         $pubKeyBin = $this->ownPubKeyBin;
         if (!\is_string($pubKeyBin) || \strlen($pubKeyBin) < 32) {
