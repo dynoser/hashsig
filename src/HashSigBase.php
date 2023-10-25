@@ -89,7 +89,8 @@ class HashSigBase {
         string $hashSignedStr,
         $leftPartOfKey = true,
         bool $doNotVerifyHash = false,
-        bool $doNotVerifySign = false
+        bool $doNotVerifySign = false,
+        array $pkgTrustedKeys = null
     ): ?array {
         if (true === $leftPartOfKey) {
             $leftPartOfKey = $this->srcPath . '/';
@@ -165,6 +166,26 @@ class HashSigBase {
         if (!\is_string($keyPubBin) || \strlen($keyPubBin) < 32) {
             return null;
         }
+
+        if ($pkgTrustedKeys) {
+            $isTrusted = false;
+            foreach($pkgTrustedKeys as $chkPubKey) {
+                $l = \strlen($chkPubKey);
+                if ($l > 32) {
+                    $chkPubKey = (64 === $l) ? \hex2bin($chkPubKey) : \base64_decode($chkPubKey);
+                }
+                if ($chkPubKey === $keyPubBin) {
+                    $isTrusted = true;
+                    break;
+                }
+            }
+            if (!$isTrusted && $this->trustKeysObj) {
+                $isTrusted = $this->trustKeyObj->isTrust($keyPubBin);
+            }
+            if (!$isTrusted) {
+                throw new \Exception("Public key \"$keyPubB64\" is not trusted");
+            }
+        }
         
         $signatureBin = \base64_decode($signatureB64);
         if (!\is_string($signatureBin) || \strlen($signatureBin) < 64) {
@@ -185,9 +206,9 @@ class HashSigBase {
                 throw new \Exception("Invalid signature");
             }
             $this->lastSuccessPubKeyBin = $keyPubBin;
-            if ($this->trustKeysObj && !$this->isTrusted($keyPubBin)) {
-                throw new \Exception("Package signature is OK, but public key not trusted: " . $keyPubB64);
-            }
+//            if ($this->trustKeysObj && !$this->isTrusted($keyPubBin)) {
+//                throw new \Exception("Package signature is OK, but public key not trusted: " . $keyPubB64);
+//            }
         }
 
         $resultArr = [];
@@ -205,7 +226,7 @@ class HashSigBase {
         return $resultArr;
     }
 
-    public function loadHashSigArr(string $hashSigFileFull, $leftPartOfKey = null, bool $doNotVerifyHash = false, bool $doNotVerifySignature = false): ?array {
+    public function loadHashSigArr(string $hashSigFileFull, $leftPartOfKey = null, bool $doNotVerifyHash = false, bool $doNotVerifySignature = false, array $pkgTrustedKeys = null): ?array {
         $hashSigFileFull = \strtr($hashSigFileFull, '\\', '/');
         if (\is_null($leftPartOfKey)) {
             $leftPartOfKey = \dirname($hashSigFileFull);
@@ -216,7 +237,7 @@ class HashSigBase {
         if (!$hashSignedStr) {
             return null;
         }
-        $hashSignedArr = $this->unpackHashSignedStr($hashSignedStr, $leftPartOfKey, $doNotVerifyHash, $doNotVerifySignature);
+        $hashSignedArr = $this->unpackHashSignedStr($hashSignedStr, $leftPartOfKey, $doNotVerifyHash, $doNotVerifySignature, $pkgTrustedKeys);
         if (!$hashSignedArr) {
             return null;
         }
@@ -263,8 +284,26 @@ class HashSigBase {
         array $baseURLs = null,
         bool $doNotSaveFiles = false,
         bool $doNotOverWrite = false,
-        bool $zipOnlyMode = false
+        bool $zipOnlyMode = false,
+        array $onlyTheseFilesArr = null
     ) {
+        // get $pkgTrustedKeys from URL (if specified by |pubkey|pubkey... 
+        $palPos = \strpos($hashSigFileFull, '|');
+        // get $onlyTheseFilesArr from URL (if specified by #file#file2#file3...
+        $sharPos = \strpos($hashSigFileFull, '#', $palPos ? $palPos : 0);
+        if ($sharPos) {
+            if (!$onlyTheseFilesArr) {
+                // use $onlyTheseFilesArr unless specified otherwise
+                $onlyTheseFilesArr = \explode('#', \substr($hashSigFileFull, $sharPos + 1));
+            }
+            $hashSigFileFull = \substr($hashSigFileFull, 0, $sharPos);
+        }
+        if ($palPos) {
+            $pkgTrustedKeys = \explode('|', substr($hashSigFileFull, $palPos + 1));
+            $hashSigFileFull = \substr($hashSigFileFull, 0, $palPos);
+        } else {
+            $pkgTrustedKeys = null;
+        }
         if (\substr($hashSigFileFull, -4) === '.zip') {
             $zipMode = true;
             $zipData = $this->peekFromURLorFile($hashSigFileFull);
@@ -291,7 +330,7 @@ class HashSigBase {
         
         // check-prepare saveToDir
         $chkSaveToDir = $saveToDir ? $saveToDir : $this->srcPath;
-        if (!$doNotSaveFiles && !\is_dir($chkSaveToDir) && !\mkdir($chkSaveToDir, 0777, true)) {
+        if (!$doNotSaveFiles && $chkSaveToDir && !\is_dir($chkSaveToDir) && !\mkdir($chkSaveToDir, 0777, true)) {
             throw new \Exception("Not found and can't create target dir: $chkSaveToDir");
         }
         if ($saveToDir) {
@@ -309,9 +348,29 @@ class HashSigBase {
             }
         }
 
-        $hashSignedArr = $this->loadHashSigArr($hashSigFileFull, '');
+        $hashSignedArr = $this->loadHashSigArr($hashSigFileFull, '', false, false, $pkgTrustedKeys);
         if (!$hashSignedArr) {
             throw new \Exception("Can't load hashSig file from $hashSigFileFull");
+        }
+        
+        // prepare $onlyTheseFilesArr
+        if ($onlyTheseFilesArr) {
+            $masksArr = [];
+            if (\is_string(\reset($onlyTheseFilesArr))) {
+                $onlyTheseFilesArr = \array_flip($onlyTheseFilesArr);
+                foreach($onlyTheseFilesArr as $k => $v) {
+                    if (!\is_numeric($v)) {
+                        throw new \Exception("Bad array format onlyTheseFilesArr: '$v'");
+                    }
+                    if (false !== strpos($k, '?') || false !== strpos($k, '*')) {
+                        $masksArr[] = $k;
+                        $v = [];
+                    } else {
+                        $v = false;
+                    }
+                    $onlyTheseFilesArr[$k] = $v;
+                }
+            }
         }
         
         $successArr = [];
@@ -319,6 +378,25 @@ class HashSigBase {
         $errMsgArr = [];
         
         foreach($hashSignedArr as $shortName => $fileHashLenArr) {
+            if ($onlyTheseFilesArr) {
+                if (\array_key_exists($shortName, $onlyTheseFilesArr)) {
+                    $onlyTheseFilesArr[$shortName] = true;
+                } elseif (!$masksArr)  {
+                    continue;
+                } else {
+                    $matched = false;
+                    foreach($masksArr as $mask) {
+                        if (\fnmatch($mask, $shortName)) {
+                            $onlyTheseFilesArr[$mask][] = $shortName;
+                            $matched = true;
+                            break;
+                        }
+                    }
+                    if (!$matched) {
+                        continue;
+                    }
+                }
+            }
             $fileData = null;
             $fileHashHex = $fileHashLenArr[1];
             $fileExpectedLen = $fileHashLenArr[2];
@@ -364,6 +442,6 @@ class HashSigBase {
         
         $this->unlinkTempZipFile();
 
-        return \compact('successArr', 'errorsArr', 'errMsgArr');
+        return \compact('successArr', 'errorsArr', 'errMsgArr', 'onlyTheseFilesArr');
     }
 }
