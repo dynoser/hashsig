@@ -98,7 +98,7 @@ $optionsArr = (function() {
 
 // nsmap options
 if (!\defined('DYNO_NSMAP_URL') && empty($optionsArr['nonsmap'])) {
-    $nsMapUrl = $optionsArr['nsmap'] ?? 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip';
+    $nsMapUrl = $optionsArr['nsmap'] ?? 'https://raw.githubusercontent.com/dynoser/nsmap/main/nsmap.hashsig.zip|EkDohf20jN/9kXW/WL3ZXo245ggek9TiTWzzmBriMTU=';
     define('DYNO_NSMAP_URL', $nsMapUrl);
     if (!\defined('DYNO_NSMAP_TIMEOUT')) {
         $nsMapTimeOut = $optionsArr['nsmaptimeout'] ?? 60;
