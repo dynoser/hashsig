@@ -20,6 +20,7 @@ class HashSigBase {
     public array $lastPkgHeaderArr = [];
     public string $lastSuccessPubKeyBin = '';
     public $trustKeysObj = null;
+    public $writeLogObj = null;
 
     public function setDir(string $srcPath = null, string $hashSigFile = null): void
     {
@@ -424,12 +425,15 @@ class HashSigBase {
             } else {
                 $targetFileName = $saveToDir . '/' . $shortName;
                 if (!$doNotSaveFiles && $saveToDir) {
-                    if (!$doNotOverWrite || !\is_file($targetFileName)) {
+                    if (!$doNotOverWrite || !($is_file = \is_file($targetFileName))) {
                         if (false !== \strpos($shortName, '/')) {
                             $toDir = \dirname($targetFileName);
                             if (!\is_dir($toDir) && !\mkdir($toDir, 0777, true)) {
                                 throw new \Exception("Can't write to file: $targetFileName");
                             }
+                        }
+                        if ($this->writeLogObj) {
+                            $this->writeLogObj->logWriteByObj($targetFileName, $is_file ? 1 : 0, $fileHashHex);
                         }
                         $wb = \file_put_contents($targetFileName, $fileData);
                         $fileData = $targetFileName;
