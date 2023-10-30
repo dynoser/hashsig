@@ -121,14 +121,21 @@ do {
 } while (\strlen($nextChkDir) < \strlen($chkDir));
 
 if ($vendorDir) {
-    // use vendor autoload if need
-    if (!empty($optionsArr['a'])) {
+    // try to use composer or dynoser autoload if requested
+    if (!empty($optionsArr['va'])) {
         $chkFile = $vendorDir . '/autoload.php';
-        if (\is_file($chkFile)) {
-            echo " (Using autoloader=$chkFile )\n";
-            require_once $chkFile;
-        }
+    } elseif (!empty($optionsArr['a'])) {
+        $chkFile = $vendorDir . '/dynoser/autoload/autoload.php';
+    } else {
+        $chkFile = '';
     }
+    if ($chkFile && \is_file($chkFile)) {
+        echo " (Using autoloader=$chkFile )\n";
+        require_once $chkFile;
+    } elseif ($chkFile) {
+        echo " (NOT FOUND autoloader=$chkFile \n";
+    }
+    
     // check sodium polyfill
     if (!\function_exists('sodium_crypto_sign_verify_detached')) {
         $chkFile = $vendorDir . '/paragonie/sodium_compat/autoload.php';
@@ -221,7 +228,7 @@ if (!$ownHSCreaterFile) {
     '/src/HashSigCreater.php' => ['/dynoser/hashsig', 'https://raw.githubusercontent.com/dynoser/hashsig/main/hashsig.hashsig.zip', ''],
     ];
 }
-if (!$ownHSCreaterFile || !empty($optionsArr['install'])) {
+if (!$ownHSCreaterFile || !empty($optionsArr['install']) || !empty($optionsArr['a'])) {
     $pkgInstallArr += [
     '/src/AutoLoader.php' => ['/dynoser/autoload', 'https://raw.githubusercontent.com/dynoser/autoload/main/autoload.hashsig.zip', ''],
     ];
@@ -565,6 +572,7 @@ try {
     case 'hashalg':
         $hashAlgName = $optValue;
         break;
+    case 'va':
     case 'a':
     case 'nonsmap':
     case 'getfirst':
