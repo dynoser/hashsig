@@ -17,8 +17,10 @@ class HashSigBase {
     public $ownSignerObj = null;
     public $ownPubKeyBin = null;
     
-    public array $lastPkgHeaderArr = [];
+    public array  $lastPkgHeaderArr = [];
     public string $lastSuccessPubKeyBin = '';
+    public array  $hashSignedArr = [];
+    public string $hashSignerStr = '';
     public $trustKeysObj = null;
     public $writeLogObj = null;
 
@@ -154,9 +156,9 @@ class HashSigBase {
 
         $this->lastPkgHeaderArr = $tmpArr;
 
-        $sumSt = \trim(\substr($hashSignedStr, $firstStrEndPos + 1));
+        $this->hashSignedStr = \trim(\substr($hashSignedStr, $firstStrEndPos + 1));
         if (!$doNotVerifyHash) {
-            $chkHashHex = \hash($hashAlg, $sumSt);
+            $chkHashHex = \hash($hashAlg, $this->hashSignedStr);
             if ($hashHex !== $chkHashHex) {
                 return null;
             }
@@ -167,7 +169,7 @@ class HashSigBase {
         if (!\is_string($keyPubBin) || \strlen($keyPubBin) < 32) {
             return null;
         }
-
+        
         if ($pkgTrustedKeys) {
             $isTrusted = false;
             foreach($pkgTrustedKeys as $chkPubKey) {
@@ -213,7 +215,7 @@ class HashSigBase {
         }
 
         $resultArr = [];
-        $arr = \explode("\n", $sumSt);
+        $arr = \explode("\n", $this->hashSignedStr);
         foreach($arr as $st) {
             $i = \strpos($st, ':');
             if (!$i) continue;
@@ -349,8 +351,8 @@ class HashSigBase {
             }
         }
 
-        $hashSignedArr = $this->loadHashSigArr($hashSigFileFull, '', false, false, $pkgTrustedKeys);
-        if (!$hashSignedArr) {
+        $this->hashSignedArr = $this->loadHashSigArr($hashSigFileFull, '', false, false, $pkgTrustedKeys);
+        if (!$this->hashSignedArr) {
             throw new \Exception("Can't load hashSig file from $hashSigFileFull");
         }
         
@@ -378,7 +380,7 @@ class HashSigBase {
         $errorsArr = [];
         $errMsgArr = [];
         
-        foreach($hashSignedArr as $shortName => $fileHashLenArr) {
+        foreach($this->hashSignedArr as $shortName => $fileHashLenArr) {
             if ($onlyTheseFilesArr) {
                 if (\array_key_exists($shortName, $onlyTheseFilesArr)) {
                     $onlyTheseFilesArr[$shortName] = true;
@@ -445,7 +447,7 @@ class HashSigBase {
         }
         
         $this->unlinkTempZipFile();
-
+        
         return \compact('successArr', 'errorsArr', 'errMsgArr', 'onlyTheseFilesArr');
     }
 }
