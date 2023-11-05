@@ -109,7 +109,7 @@ class HashSigBase {
         }
         $signStr = \substr($hashSignedStr, 0 , $firstStrEndPos);
         $signArr = \explode('~', $signStr);
-        if (count($signArr) < 5) {
+        if (\count($signArr) < 5) {
             return null;
         }
         $tmpArr = [];
@@ -290,9 +290,9 @@ class HashSigBase {
         bool $zipOnlyMode = false,
         array $onlyTheseFilesArr = null
     ) {
-        // get $pkgTrustedKeys from URL (if specified by |pubkey|pubkey... 
+        // get $pkgTrustedKeys from URL (if specified by |pubkey|pubkey...)
         $palPos = \strpos($hashSigFileFull, '|');
-        // get $onlyTheseFilesArr from URL (if specified by #file#file2#file3...
+        // get $onlyTheseFilesArr from URL (if specified by #file#file2#file3...)
         $sharPos = \strpos($hashSigFileFull, '#', $palPos ? $palPos : 0);
         if ($sharPos) {
             if (!$onlyTheseFilesArr) {
@@ -365,7 +365,7 @@ class HashSigBase {
                     if (!\is_numeric($v)) {
                         throw new \Exception("Bad array format onlyTheseFilesArr: '$v'");
                     }
-                    if (false !== strpos($k, '?') || false !== strpos($k, '*')) {
+                    if (false !== \strpos($k, '?') || false !== \strpos($k, '*')) {
                         $masksArr[] = $k;
                         $v = [];
                     } else {
