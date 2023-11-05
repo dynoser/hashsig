@@ -20,7 +20,7 @@ class HashSigBase {
     public array  $lastPkgHeaderArr = [];
     public string $lastSuccessPubKeyBin = '';
     public array  $hashSignedArr = [];
-    public string $hashSignerStr = '';
+    public string $hashSignedStr = '';
     public $trustKeysObj = null;
     public $writeLogObj = null;
 
@@ -183,7 +183,7 @@ class HashSigBase {
                 }
             }
             if (!$isTrusted && $this->trustKeysObj) {
-                $isTrusted = $this->trustKeyObj->isTrust($keyPubBin);
+                $isTrusted = $this->trustKeysObj->isTrust($keyPubBin);
             }
             if (!$isTrusted) {
                 throw new \Exception("Public key \"$keyPubB64\" is not trusted");
@@ -209,9 +209,6 @@ class HashSigBase {
                 throw new \Exception("Invalid signature");
             }
             $this->lastSuccessPubKeyBin = $keyPubBin;
-//            if ($this->trustKeysObj && !$this->isTrusted($keyPubBin)) {
-//                throw new \Exception("Package signature is OK, but public key not trusted: " . $keyPubB64);
-//            }
         }
 
         $resultArr = [];
