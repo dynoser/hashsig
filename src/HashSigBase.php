@@ -342,6 +342,33 @@ class HashSigBase {
         if ($zipMode) {
             $baseURLs = ['zip://' . $this->tempZipFile . '#'];
             $hashSigFileFull = $baseURLs[0] . $baseHSFile;
+            // check hashSigFileFull
+            if (empty(\file_get_contents($hashSigFileFull))) {
+                $baseHSFile = '';
+                $zip = new ZipArchive();
+                if ($zip->open($this->tempZipFile) !== true) {
+                    throw new \Exception("Can't open temporary zip-archive:" . $this->tempZipFile);
+                }
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $entry = $zip->getNameIndex($i);
+                    if (\substr($entry, -8) === '.hashsig') {
+                        $i = \strrpos($entry, '/');
+                        if ($i) {
+                            $baseURLs[0] .= \substr($entry, 0, $i + 1);
+                            $baseHSFile = \substr($entry, $i + 1);
+                        } else {
+                            $baseHSFile = $entry;
+                        }
+                        $hashSigFileFull = $baseURLs[0] . $baseHSFile;
+                        break;
+                    }
+                }
+                $zip->close();
+                if ($baseHSFile) {
+                    $this->setDir($saveToDir, $baseHSFile);
+                }
+            }
+
         } else {
             if (\is_null($baseURLs)) {
                 $baseURLs = [\dirname($hashSigFileFull) . '/'];
