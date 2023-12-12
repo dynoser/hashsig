@@ -10,7 +10,7 @@ class HashSigBase {
     const HASHSIG_FILE_EXT = '.hashsig';
     const DEFAULT_HASH_ALG = 'sha256';
     const DEFAULT_HASH_HEX_LEN = 64;
-    private string $hashAlgName = self::DEFAULT_HASH_ALG;
+    public string $hashAlgName = self::DEFAULT_HASH_ALG;
     public int $hashHexLen = self::DEFAULT_HASH_HEX_LEN;
 
     public $canSign = false;
@@ -107,7 +107,7 @@ class HashSigBase {
         
         $firstStrEndPos = \strpos($hashSignedStr, "\n");
         if (!$firstStrEndPos) {
-            return null;
+            throw new \Exception("No hashsig header");
         }
         $signStr = \substr($hashSignedStr, 0 , $firstStrEndPos);
         $this->hashSignedStr = \trim(\substr($hashSignedStr, $firstStrEndPos + 1));
@@ -131,7 +131,7 @@ class HashSigBase {
         
         $signArr = \explode('~', $signStr);
         if (\count($signArr) < 5) {
-            return null;
+            throw new \Exception("Incorrect hashsig header");
         }
         $tmpArr = [];
         foreach($signArr as $helmlStr) {
@@ -142,9 +142,9 @@ class HashSigBase {
             }
         }
 
-        foreach(['hashsig'] as $key) {
+        foreach(['hashsig', 'signature', 'pubkey'] as $key) {
             if (empty($tmpArr[$key])) {
-                return null;
+                throw new \Exception("Incorrect hashsig first row: key not found [$key]");
             }
         }
         
@@ -177,14 +177,14 @@ class HashSigBase {
         if (!$doNotVerifyHash) {
             $chkHashHex = \hash($hashAlg, $this->hashSignedStr);
             if ($hashHex !== $chkHashHex) {
-                return null;
+                throw new \Exception("Incorrect hashsig hash");
             }
         }
         $this->setHashAlg($hashAlg);
 
         $keyPubBin = empty($keyPubB64) ? '' : \base64_decode($keyPubB64);
         if (!$doNotVerifySign && (!\is_string($keyPubBin) || \strlen($keyPubBin) < 32)) {
-            return null;
+            throw new \Exception("Incorrect pubkey in hashsig header");
         }
 
         if ($pkgTrustedKeys) {
@@ -196,11 +196,10 @@ class HashSigBase {
                     if ($l > 32) {
                         $chkPubKey = (64 === $l) ? \hex2bin($chkPubKey) : \base64_decode($chkPubKey);
                     }
+                    $haveKeys = true;
                     if ($chkPubKey === $keyPubBin) {
                         $isTrusted = true;
                         break;
-                    } else {
-                        $haveKeys = true;
                     }
                 }
             }
@@ -217,7 +216,7 @@ class HashSigBase {
         if (!$doNotVerifySign) {
             $signatureBin = \base64_decode($signatureB64);
             if (!\is_string($signatureBin) || \strlen($signatureBin) < 64) {
-                return null;
+                throw new \Exception("Incorrect signature in hashsig header");
             }
 
             // Verify signature
@@ -226,7 +225,7 @@ class HashSigBase {
             } elseif (\function_exists('sodium_crypto_sign_verify_detached')) {
                 $signIsOk = \sodium_crypto_sign_verify_detached($signatureBin, $hashHex, $keyPubBin);
             } else {
-                throw new \Exception("No signature verification method. Enable sodium php-ext. or use polyfill 'composer require paragonie/sodium_compat'");
+                throw new \Exception("No signature verification method. Enable sodium php-ext or use polyfill 'composer require paragonie/sodium_compat'");
             }
             
             if (!$signIsOk) {
