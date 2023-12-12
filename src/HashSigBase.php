@@ -112,25 +112,23 @@ class HashSigBase {
         $signStr = \substr($hashSignedStr, 0 , $firstStrEndPos);
         $this->hashSignedStr = \trim(\substr($hashSignedStr, $firstStrEndPos + 1));
 
-        if ($signStr === 'hashsig: list') {
-            if ($pkgTrustedKeys) {
-                throw new \Exception("Signature required because trusted keys are specified");
-            }
-            // list-mode, no signature or hashes
-            $resultArr = [];
-            $arr = \explode("\n", $this->hashSignedStr);
-            foreach($arr as $st) {
-                if (\strlen($st)) {
-                    $i = \strpos($st, ':');
-                    $fileShortName = \substr($st, 0, $i ? $i : \strlen($st));
-                    $resultArr[$leftPartOfKey . $fileShortName] = [$fileShortName, '', 0];
-                }
-            }
-            return $resultArr;
-        }
-        
+        $rowsArr = \array_filter(\explode("\n", $this->hashSignedStr), 'strlen');
         $signArr = \explode('~', $signStr);
         if (\count($signArr) < 5) {
+            if (\trim($signArr[0]) === 'hashsig: list') {
+                // list-mode, no signature or hashes
+                $resultArr = $this->unpackWithoutHeader($rowsArr, $leftPartOfKey, true);
+            } else {
+                // try no-header mode
+                \array_unshift($rowsArr, $signStr);
+                $resultArr = $this->unpackWithoutHeader($rowsArr, $leftPartOfKey, false);
+            }
+            if (\count($rowsArr) === \count($resultArr)) {
+                if ($pkgTrustedKeys) {
+                    throw new \Exception("Signature required because trusted keys are specified");
+                }
+                return $resultArr;
+            }            
             throw new \Exception("Incorrect hashsig header");
         }
         $tmpArr = [];
@@ -234,9 +232,14 @@ class HashSigBase {
             $this->lastSuccessPubKeyBin = $keyPubBin;
         }
 
+        return $this->unpackWithoutHeader($rowsArr, $leftPartOfKey);
+    }
+    
+    public function unpackWithoutHeader($arr, string $leftPartOfKey, bool $listModeEnabled = false) {
         $resultArr = [];
-        $arr = \explode("\n", $this->hashSignedStr);
+
         foreach($arr as $st) {
+            $st = \trim($st);
             $i = \strpos($st, ':');
             if ($i) {
                 $j = \strpos($st, ' ', $i + 2);
@@ -245,10 +248,13 @@ class HashSigBase {
                     $fileHashHex = \substr($st, $i + 2, $j - $i - 2);
                     $resultArr[$leftPartOfKey . $fileShortName] = [$fileShortName, $fileHashHex, \substr($st, $j+1)];
                 }
+            } elseif ($listModeEnabled && $st) {
+                $resultArr[$leftPartOfKey . $st] = [$st, '', 0];
+
             }
         }
 
-        return $resultArr;
+        return $resultArr;        
     }
 
     public function loadHashSigArr(string $hashSigFileFull, $leftPartOfKey = null, bool $doNotVerifyHash = false, bool $doNotVerifySignature = false, array $pkgTrustedKeys = null): ?array {
