@@ -10,7 +10,7 @@ class HashSigBase {
     const HASHSIG_FILE_EXT = '.hashsig';
     const DEFAULT_HASH_ALG = 'sha256';
     const DEFAULT_HASH_HEX_LEN = 64;
-    public string $hashAlgName = self::DEFAULT_HASH_ALG;
+    private string $hashAlgName = self::DEFAULT_HASH_ALG;
     public int $hashHexLen = self::DEFAULT_HASH_HEX_LEN;
 
     public $canSign = false;
@@ -74,7 +74,7 @@ class HashSigBase {
         if ($hashAlg && $hashAlg !== self::DEFAULT_HASH_ALG) {
             $testHash = \hash($hashAlg, 'test');
             if (!$testHash) {
-                throw new \InvalidArgumentException("Hash $hashAlg is not supported.");
+                throw new \InvalidArgumentException("Unknown hashing algorithm: $hashAlg");
             }
             $hashHexLen = \strlen($testHash);
         } else {
@@ -120,9 +120,11 @@ class HashSigBase {
             $resultArr = [];
             $arr = \explode("\n", $this->hashSignedStr);
             foreach($arr as $st) {
-                $i = \strpos($st, ':');
-                $fileShortName = \substr($st, 0, $i ? $i : \strlen($st));
-                $resultArr[$leftPartOfKey . $fileShortName] = [$fileShortName, '', 0];
+                if (\strlen($st)) {
+                    $i = \strpos($st, ':');
+                    $fileShortName = \substr($st, 0, $i ? $i : \strlen($st));
+                    $resultArr[$leftPartOfKey . $fileShortName] = [$fileShortName, '', 0];
+                }
             }
             return $resultArr;
         }
