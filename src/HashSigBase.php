@@ -24,7 +24,7 @@ class HashSigBase {
     public $trustKeysObj = null;
     public $writeLogObj = null;
 
-    public $peekContext = null;
+    public static $peekContext = null;
 
     public function setDir(string $srcPath = null, string $hashSigFile = null): void
     {
@@ -235,7 +235,7 @@ class HashSigBase {
         return $this->unpackWithoutHeader($rowsArr, $leftPartOfKey);
     }
     
-    public function unpackWithoutHeader($arr, string $leftPartOfKey, bool $listModeEnabled = false) {
+    public function unpackWithoutHeader($arr, string $leftPartOfKey = '', bool $listModeEnabled = false) {
         $resultArr = [];
 
         foreach($arr as $st) {
@@ -254,13 +254,13 @@ class HashSigBase {
             }
         }
 
-        return $resultArr;        
+        return $resultArr;
     }
 
     public function loadHashSigArr(string $hashSigFileFull, $leftPartOfKey = null, bool $doNotVerifyHash = false, bool $doNotVerifySignature = false, array $pkgTrustedKeys = null): ?array {
         $hashSigFileFull = \strtr($hashSigFileFull, '\\', '/');
         if (\is_null($leftPartOfKey)) {
-            $leftPartOfKey = \dirname($hashSigFileFull);
+            $leftPartOfKey = \dirname($hashSigFileFull) . '/';
         }
 
         $hashSignedStr = $this->peekFromURLorFile($hashSigFileFull);
@@ -277,25 +277,19 @@ class HashSigBase {
     
     public static function peekFromURLorFile(string $urlORfile, int $fileExpectedLen = null, int $fileOffset = 0): ?string {
         if (\strpos($urlORfile, '://')) {
-            if (!$this->peekContext) {
-                $this->peekContext = \stream_context_create([
+            if (!self::$peekContext) {
+                self::$peekContext = \stream_context_create([
                     "ssl" => [
                         "verify_peer" => false,
                         "verify_peer_name" => false,
                     ],
                 ]);
             }
-            $dataStr = @\file_get_contents($urlORfile, false, $this->peekContext, $fileOffset);
+            $dataStr = @\file_get_contents($urlORfile, false, self::$peekContext, $fileOffset);
         } else {
-            if (!\file_exists($urlORfile)) {
-                return null;            
-            }
-            $dataStr = \file_get_contents($urlORfile, false, null, $fileOffset);
+            $dataStr = \file_exists($urlORfile) ? \file_get_contents($urlORfile, false, null, $fileOffset) : null;
         }
-        if (!\is_string($dataStr)) {
-            return null;
-        }
-        return $dataStr;
+        return \is_string($dataStr) ? $dataStr : null;
     }
     
     // HashSig downloader below:
